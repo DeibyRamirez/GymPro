@@ -42,17 +42,6 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
   const [exercises, setExercises] = useState<ExerciseForm[]>(routine.exercises)
   const [loading, setLoading] = useState(false)
 
-  // 🔁 Sincroniza el estado cuando cambia la rutina seleccionada
-  useEffect(() => {
-    if (routine) {
-      setName(routine.name)
-      setDescription(routine.description)
-      setDuration(routine.duration)
-      setDifficulty(routine.difficulty)
-      setExercises(routine.exercises || [])
-    }
-  }, [routine])
-
   useEffect(() => {
     console.log("📦 Rutina recibida en EditRoutineDialog:", routine);
   }, [routine]);
@@ -143,9 +132,9 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
       alert("Rutina actualizada correctamente.")
       onOpenChange(false)
       onUpdated?.()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error de red o ejecución:", err)
-      alert(`Error de red o ejecución: ${err.message || err}`)
+      alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
@@ -179,9 +168,9 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
       alert("Rutina eliminada correctamente.")
       onOpenChange(false)
       onUpdated?.()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error de red o ejecución:", err)
-      alert(`Error de red o ejecución: ${err.message || err}`)
+      alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
@@ -217,7 +206,7 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
 
             <div className="space-y-2">
               <Label>Nivel de Dificultad</Label>
-              <Select value={difficulty} onValueChange={(value: any) => setDifficulty(value)}>
+              <Select value={difficulty} onValueChange={(value: 'beginner' | 'intermediate' | 'advanced') => setDifficulty(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un nivel" />
                 </SelectTrigger>

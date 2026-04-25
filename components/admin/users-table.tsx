@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface UsersTableProps {
-  users: any[]
+  users: Array<{ id: string; name: string; email: string; role: UserRole; avatar?: string }>
   onRefresh?: () => void
 }
 

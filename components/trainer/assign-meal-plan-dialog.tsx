@@ -22,9 +22,17 @@ interface AssignMealPlanDialogProps {
   onAssign: (mealPlanId: string) => void
 }
 
+type MealPlanOption = {
+  _id: string
+  name: string
+  description: string
+  calories: number
+  meals: unknown[]
+}
+
 export function AssignMealPlanDialog({ open, onOpenChange, clientName, onAssign }: AssignMealPlanDialogProps) {
   const [selectedPlan, setSelectedPlan] = useState<string>("")
-  const [mealPlans, setMealPlans] = useState<any[]>([])
+  const [mealPlans, setMealPlans] = useState<MealPlanOption[]>([])
 
   useEffect(() => {
     if (!open) return

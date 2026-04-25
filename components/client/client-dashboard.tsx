@@ -25,7 +25,7 @@ interface Routine {
   description: string
   duration: string
   difficulty: 'beginner' | 'intermediate' | 'advanced'
-  exercises: any[]
+  exercises: unknown[]
   createdBy: string
 }
 
@@ -34,7 +34,7 @@ interface MealPlan {
   name: string
   description: string
   calories: number
-  meals: any[]
+  meals: unknown[]
   createdBy: string
 }
 

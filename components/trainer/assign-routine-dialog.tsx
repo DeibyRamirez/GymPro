@@ -22,9 +22,18 @@ interface AssignRoutineDialogProps {
   onAssign: (routineId: string) => void
 }
 
+type RoutineOption = {
+  _id: string
+  name: string
+  description: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  duration: string
+  exercises: unknown[]
+}
+
 export function AssignRoutineDialog({ open, onOpenChange, clientName, onAssign }: AssignRoutineDialogProps) {
   const [selectedRoutine, setSelectedRoutine] = useState<string>("")
-  const [routines, setRoutines] = useState<any[]>([])
+  const [routines, setRoutines] = useState<RoutineOption[]>([])
 
   useEffect(() => {
     if (!open) return

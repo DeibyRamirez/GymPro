@@ -24,6 +24,16 @@ interface CalendarEvent {
   completed?: boolean
 }
 
+type CalendarApiEvent = {
+  id?: string
+  _id?: string
+  title: string
+  description?: string
+  date: string
+  type: CalendarEvent['type']
+  completed?: boolean
+}
+
 export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -49,7 +59,7 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
         
         if (response.ok) {
           const data = await response.json()
-          const formattedEvents = data.events?.map((event: any) => ({
+          const formattedEvents = (data.events as CalendarApiEvent[] | undefined)?.map((event) => ({
             id: event.id || event._id,
             title: event.title,
             description: event.description,
@@ -79,7 +89,7 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
     )
     if (response.ok) {
       const data = await response.json()
-      const formattedEvents = data.events?.map((event: any) => ({
+      const formattedEvents = (data.events as CalendarApiEvent[] | undefined)?.map((event) => ({
         id: event.id || event._id,
         title: event.title,
         description: event.description,
@@ -192,7 +202,7 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
             </div>
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Select value={type} onValueChange={(value: any) => setType(value)}>
+              <Select value={type} onValueChange={(value: CalendarEvent['type']) => setType(value)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="workout">Entrenamiento</SelectItem>

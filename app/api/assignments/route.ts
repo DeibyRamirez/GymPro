@@ -18,6 +18,8 @@ async function verifyAuth(req: NextRequest) {
   return user;
 }
 
+type AssignmentFilters = Record<string, unknown>
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const trainerId = searchParams.get('trainerId');
 
-    const filters: any = {};
+    const filters: AssignmentFilters = {};
     if (user.role === 'trainer') filters.trainerId = user._id;
     else if (trainerId) filters.trainerId = trainerId;
 

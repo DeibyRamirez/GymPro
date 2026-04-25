@@ -57,8 +57,8 @@ export function ClientProfile({ clientId, onUpdate }: ClientProfileProps) {
         setGoal(user.goal || "")
         setActivityLevel(user.activityLevel || "")
         setMedicalConditions(user.medicalConditions || "")
-      } catch (err: any) {
-        setError(err.message || "Error al cargar perfil")
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Error al cargar perfil")
       } finally {
         setLoading(false)
       }
@@ -131,8 +131,8 @@ export function ClientProfile({ clientId, onUpdate }: ClientProfileProps) {
 
       // Limpiar mensaje de éxito después de 3 segundos
       setTimeout(() => setSuccess(""), 3000)
-    } catch (err: any) {
-      setError(err.message || "Error al actualizar perfil")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al actualizar perfil")
     } finally {
       setSaving(false)
     }

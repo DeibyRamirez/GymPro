@@ -16,7 +16,7 @@ async function verifyAuth(req: NextRequest) {
     throw new Error('Token no proporcionado');
   }
 
-  const decoded = jwt.verify(token, JWT_SECRET) as any;
+  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
   const user = await User.findById(decoded.userId);
 
   if (!user || !user.isActive) {
@@ -24,10 +24,6 @@ async function verifyAuth(req: NextRequest) {
   }
 
   return user;
-}
-
-interface Props {
-  params: { id: string };
 }
 
 // GET - Obtener rutina por ID
@@ -81,7 +77,14 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const user = await verifyAuth(req);
     const body = await req.json();
 
-    const exercisesWithIds = [];
+    const exercisesWithIds: Array<{
+      exercise: unknown
+      sets: unknown
+      reps: unknown
+      rest: unknown
+      instructions: string
+      order: number
+    }> = [];
 
     // Recorremos los ejercicios del body
     for (const ex of body.exercises) {

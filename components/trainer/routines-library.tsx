@@ -21,7 +21,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null)
-  const [routines, setRoutines] = useState([])
+  const [routines, setRoutines] = useState<Routine[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -32,7 +32,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
   // )
 
   const filteredRoutines = routines.filter(
-  (routine: any) =>
+  (routine) =>
     routine.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     routine.description?.toLowerCase().includes(searchQuery.toLowerCase())
 )
@@ -81,8 +81,8 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
         const data = await res.json()
         setRoutines(data.routines)
       }
-      catch (err: any) {
-        setError(err.message)
+      catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Error desconocido")
       }
       finally {
         setLoading(false)
@@ -113,7 +113,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredRoutines.map((routine: any) => (
+        {filteredRoutines.map((routine) => (
           <Card
             key={routine._id}
             className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/50"
@@ -194,6 +194,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
       {selectedRoutine && (
         <>
           <EditRoutineDialog
+            key={selectedRoutine._id}
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
             routine={selectedRoutine}

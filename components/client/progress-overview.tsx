@@ -9,9 +9,18 @@ interface ProgressOverviewProps {
   clientId: string
 }
 
+type ProfileData = {
+  weight?: number
+  goal?: 'perder_peso' | 'ganar_masa' | 'mantenimiento' | 'tonificar' | 'resistencia' | 'otro'
+}
+
+type CalendarEventItem = {
+  completed?: boolean
+}
+
 export function ProgressOverview({ clientId }: ProgressOverviewProps) {
   const [loading, setLoading] = useState(true)
-  const [userData, setUserData] = useState<any>(null)
+  const [userData, setUserData] = useState<ProfileData | null>(null)
   const [workoutsCount, setWorkoutsCount] = useState(0)
 
   useEffect(() => {
@@ -35,7 +44,7 @@ export function ProgressOverview({ clientId }: ProgressOverviewProps) {
         )
         if (calendarResponse.ok) {
           const calendarData = await calendarResponse.json()
-          const completedWorkouts = calendarData.events?.filter((e: any) => e.completed) || []
+          const completedWorkouts = (calendarData.events as CalendarEventItem[] | undefined)?.filter((e) => e.completed) || []
           setWorkoutsCount(completedWorkouts.length)
         }
       } catch (error) {

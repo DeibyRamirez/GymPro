@@ -15,6 +15,23 @@ async function verifyAuth(req: NextRequest) {
   return user;
 }
 
+type UserUpdateBody = Partial<{
+  name: string
+  email: string
+  role: 'admin' | 'trainer' | 'client'
+  avatar: string
+  trainerId: string
+  age: number
+  weight: number
+  height: number
+  gender: 'masculino' | 'femenino' | 'otro'
+  phone: string
+  goal: 'perder_peso' | 'ganar_masa' | 'mantenimiento' | 'tonificar' | 'resistencia' | 'otro'
+  activityLevel: 'principiante' | 'intermedio' | 'avanzado'
+  medicalConditions: string
+  isActive: boolean
+}>
+
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
@@ -58,8 +75,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ error: 'No tienes permisos para editar este usuario' }, { status: 403 });
     }
 
-    const body = await req.json();
-    const updateData: any = {};
+    const body = (await req.json()) as UserUpdateBody;
+    const updateData: UserUpdateBody = {};
 
     for (const key of ['name', 'email', 'role', 'avatar', 'trainerId', 'age', 'weight', 'height', 'gender', 'phone', 'goal', 'activityLevel', 'medicalConditions', 'isActive']) {
       if (body[key] !== undefined) updateData[key] = body[key];

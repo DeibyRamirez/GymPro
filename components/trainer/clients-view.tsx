@@ -20,7 +20,7 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false)
   const [mealPlanDialogOpen, setMealPlanDialogOpen] = useState(false)
   const [clients, setClients] = useState<User[]>([])
-  const [assignments, setAssignments] = useState<any[]>([])
+  const [assignments, setAssignments] = useState<Array<{ clientId?: { _id?: string; id?: string } | string }>>([])
 
   useEffect(() => {
     const load = async () => {

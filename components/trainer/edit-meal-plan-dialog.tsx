@@ -46,18 +46,6 @@ export function EditMealPlanDialog({
   );
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setName(plan.name);
-    setDescription(plan.description);
-    setTotalCalories(plan.calories.toString());
-    setMeals(
-      plan.meals.map((meal) => ({
-        ...meal,
-        foods: meal.foods.join(", "),
-      }))
-    );
-  }, [plan]);
-
   const addMeal = () => {
     setMeals([
       ...meals,
@@ -132,9 +120,9 @@ export function EditMealPlanDialog({
       console.log("✅ Plan actualizado:", data);
       onOpenChange(false);
       onUpdated?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error de red o ejecución:", err);
-      alert(`Error de red o ejecución: ${err.message || err}`);
+      alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -168,9 +156,9 @@ export function EditMealPlanDialog({
       console.log("🗑️ Plan eliminado correctamente");
       onOpenChange(false);
       onUpdated?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error de red o ejecución:", err);
-      alert(`Error de red o ejecución: ${err.message || err}`);
+      alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }

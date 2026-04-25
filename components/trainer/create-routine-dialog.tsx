@@ -25,7 +25,6 @@ interface CreateRoutineDialogProps {
 }
 
 interface ExerciseForm {
-  [x: string]: any
   id: string
   name: string
   sets: string
@@ -33,6 +32,7 @@ interface ExerciseForm {
   rest: string
   instructions: string
   image: string
+  muscleGroups?: string[]
 }
 
 export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRoutineDialogProps) {
@@ -126,8 +126,8 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
       onOpenChange(false);
       if (onSuccess) onSuccess();
       // window.location.reload();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   };
 

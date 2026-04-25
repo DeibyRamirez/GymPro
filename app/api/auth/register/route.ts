@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Crear nuevo usuario
-    const userData: any = {
+    const userData: Record<string, unknown> = {
       name,
       email: email.toLowerCase(),
       password,
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Preparar respuesta sin contraseña
-    const userResponse: any = {
+    const userResponse: Record<string, unknown> = {
       id: newUser._id.toString(),
       name: newUser.name,
       email: newUser.email,
@@ -146,10 +146,11 @@ export async function POST(req: NextRequest) {
 
     return response;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error en registro:', error);
+    const message = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: 'Error al registrar usuario', details: error.message },
+      { error: 'Error al registrar usuario', details: message },
       { status: 500 }
     );
   }

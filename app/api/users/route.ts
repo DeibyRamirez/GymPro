@@ -18,6 +18,13 @@ async function verifyAuth(req: NextRequest) {
   return user;
 }
 
+type UsersFilters = {
+  isActive: boolean
+  role?: string
+  trainerId?: string
+  $or?: Array<Record<string, unknown>>
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -27,7 +34,7 @@ export async function GET(req: NextRequest) {
     const role = searchParams.get('role');
     const trainerId = searchParams.get('trainerId');
 
-    const filters: any = { isActive: true };
+    const filters: UsersFilters = { isActive: true };
 
     if (role) filters.role = role;
     if (trainerId) filters.trainerId = trainerId;
@@ -49,7 +56,7 @@ export async function GET(req: NextRequest) {
         isActive: user.isActive,
       })),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error al obtener usuarios' }, { status: 500 });
   }
 }

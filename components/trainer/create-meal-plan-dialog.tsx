@@ -107,8 +107,8 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
       setMeals([{ id: "1", name: "", time: "", foods: "", calories: "" }])
       if (onSuccess) onSuccess()
       // window.location.reload()
-    } catch (err: any) {
-      alert(err.message || "Error al crear el plan")
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Error al crear el plan")
     }
   }
 

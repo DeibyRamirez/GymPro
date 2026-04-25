@@ -15,7 +15,7 @@ interface TrainerDashboardProps {
 
 export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
   const [activeTab, setActiveTab] = useState("clients")
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
         const data = await res.json();
         setStats(data.stats);
       }
-      catch (err) {
+      catch (err: unknown) {
         console.log("Error al obtener dashboard", err);
       }
       finally {

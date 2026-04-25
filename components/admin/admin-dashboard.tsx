@@ -7,8 +7,15 @@ import { Users, Dumbbell } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { User } from "@/lib/auth"
 
+type DashboardStats = {
+  totalUsers?: number
+  totalTrainers?: number
+  totalClients?: number
+  recentUsers?: User[]
+}
+
 export function AdminDashboard() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<User[]>([])
   
@@ -24,7 +31,7 @@ export function AdminDashboard() {
           setStats(data.stats);
           setUsers(data.stats?.recentUsers || [])
         }
-        catch (err) {
+        catch (err: unknown) {
           console.log("Error al obtener dashboard", err);
         }
         finally {
