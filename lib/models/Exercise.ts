@@ -13,6 +13,8 @@ export interface IExercise extends Document {
   equipment: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   createdBy: mongoose.Types.ObjectId;
+  sourceExerciseId?: mongoose.Types.ObjectId;
+  isTemplate: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,6 +71,15 @@ const ExerciseSchema = new Schema<IExercise>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'El creador del ejercicio es requerido']
+  },
+  sourceExerciseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Exercise',
+    default: null
+  },
+  isTemplate: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true,

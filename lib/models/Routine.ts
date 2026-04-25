@@ -7,6 +7,7 @@ export interface IRoutine extends Document {
   description: string;
   duration: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
+  trainingDaysPerWeek: 4 | 5 | 6;
   exercises: {
     exercise: mongoose.Types.ObjectId;
     sets: number;
@@ -18,6 +19,8 @@ export interface IRoutine extends Document {
   tags: string[];
   isActive: boolean;
   createdBy: mongoose.Types.ObjectId;
+  sourceRoutineId?: mongoose.Types.ObjectId;
+  isTemplate: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +49,11 @@ const RoutineSchema = new Schema<IRoutine>({
       message: 'La dificultad debe ser beginner, intermediate o advanced'
     },
     default: 'beginner'
+  },
+  trainingDaysPerWeek: {
+    type: Number,
+    enum: [4, 5, 6],
+    default: 5
   },
   exercises: [{
     exercise: {
@@ -80,6 +88,15 @@ const RoutineSchema = new Schema<IRoutine>({
     lowercase: true
   }],
   isActive: {
+    type: Boolean,
+    default: true
+  },
+  sourceRoutineId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Routine',
+    default: null
+  },
+  isTemplate: {
     type: Boolean,
     default: true
   },

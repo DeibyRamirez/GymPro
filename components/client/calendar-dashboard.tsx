@@ -13,6 +13,7 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 
 interface CalendarDashboardProps {
   onBack: () => void
+  assignmentId?: string
 }
 
 interface CalendarEvent {
@@ -20,8 +21,11 @@ interface CalendarEvent {
   title: string
   description?: string
   date: string
-  type: 'workout' | 'meal' | 'rest' | 'assessment'
+  type: 'workout' | 'meal' | 'rest' | 'assessment' | 'class'
   completed?: boolean
+  capacity?: number
+  bookedCount?: number
+  attendanceCode?: string
 }
 
 type CalendarApiEvent = {
@@ -32,9 +36,12 @@ type CalendarApiEvent = {
   date: string
   type: CalendarEvent['type']
   completed?: boolean
+  capacity?: number
+  bookedCount?: number
+  attendanceCode?: string
 }
 
-export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
+export function CalendarDashboard({ onBack, assignmentId }: CalendarDashboardProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -43,6 +50,7 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
   const [date, setDate] = useState("")
   const [type, setType] = useState<CalendarEvent['type']>('workout')
   const [saving, setSaving] = useState(false)
+  const [capacity, setCapacity] = useState("10")
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -52,20 +60,23 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
         const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
         const endDate = new Date(now.getFullYear(), now.getMonth() + 2, 0)
         
-        const response = await fetch(
-          `/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
-          { credentials: "include" }
-        )
+        const response = assignmentId
+          ? await fetch(`/api/assignments/${assignmentId}/calendar?month=${startDate.toISOString()}`, { credentials: 'include' })
+          : await fetch(`/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, { credentials: "include" })
         
         if (response.ok) {
           const data = await response.json()
-          const formattedEvents = (data.events as CalendarApiEvent[] | undefined)?.map((event) => ({
+          const sourceEvents = (data.events || data.calendario || []) as CalendarApiEvent[]
+          const formattedEvents = sourceEvents.map((event) => ({
             id: event.id || event._id,
             title: event.title,
             description: event.description,
             date: event.date,
             type: event.type,
-            completed: event.completed || false
+            completed: event.completed || false,
+            capacity: event.capacity,
+            bookedCount: event.bookedCount,
+            attendanceCode: event.attendanceCode,
           })) || []
           setEvents(formattedEvents)
         }
@@ -77,25 +88,29 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
     }
 
     loadEvents()
-  }, [])
+  }, [assignmentId])
 
   const refreshEvents = async () => {
     const now = new Date()
     const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const endDate = new Date(now.getFullYear(), now.getMonth() + 2, 0)
     const response = await fetch(
-      `/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
+      assignmentId ? `/api/assignments/${assignmentId}/calendar?month=${startDate.toISOString()}` : `/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
       { credentials: "include" }
     )
     if (response.ok) {
       const data = await response.json()
-      const formattedEvents = (data.events as CalendarApiEvent[] | undefined)?.map((event) => ({
+      const sourceEvents = (data.events || data.calendario || []) as CalendarApiEvent[]
+      const formattedEvents = sourceEvents.map((event) => ({
         id: event.id || event._id,
         title: event.title,
         description: event.description,
         date: event.date,
         type: event.type,
-        completed: event.completed || false
+        completed: event.completed || false,
+        capacity: event.capacity,
+        bookedCount: event.bookedCount,
+        attendanceCode: event.attendanceCode,
       })) || []
       setEvents(formattedEvents)
     }
@@ -124,12 +139,18 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
 
     setSaving(true)
     try {
-      // El evento se crea para el usuario actual por defecto.
+      // El trainer crea la clase y el cliente la verá en su calendario.
       await fetch('/api/calendar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ title, description, date, type }),
+          body: JSON.stringify({
+            title,
+            description,
+            date,
+            type,
+            capacity: type === 'class' ? Number(capacity) : undefined,
+          }),
       })
       setCreateOpen(false)
       setTitle('')
@@ -172,6 +193,11 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
         <Button onClick={() => setCreateOpen(true)}>Nuevo evento</Button>
       </div>
 
+      <div className="space-y-2 rounded-lg border p-4">
+        <p className="font-medium">Clases grupales</p>
+        <p className="text-sm text-muted-foreground">Las clases creadas por el trainer se reflejan en este calendario para los clientes asignados.</p>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <CalendarView events={events} />
@@ -209,9 +235,19 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
                   <SelectItem value="meal">Comida</SelectItem>
                   <SelectItem value="rest">Descanso</SelectItem>
                   <SelectItem value="assessment">Evaluación</SelectItem>
+                  <SelectItem value="class">Clase grupal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {type === 'class' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Capacidad</Label>
+                  <Input type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+                </div>
+                <p className="text-xs text-muted-foreground">La clase aparecerá en el calendario de los clientes asignados por el trainer.</p>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>

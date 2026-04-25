@@ -99,6 +99,33 @@ export function MealPlanDetailView({ mealPlan, onBack }: MealPlanDetailViewProps
           </div>
         </div>
       </div>
+
+      <div className="border-t pt-6">
+        <div className="bg-accent/5 border border-accent/20 rounded-lg p-6 space-y-3">
+          <h4 className="font-semibold text-lg">Macronutrientes</h4>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(() => {
+              const totals = mealPlan.meals.reduce((acc, meal) => {
+                acc.protein += meal.macros?.protein || 0
+                acc.carbs += meal.macros?.carbs || 0
+                acc.fats += meal.macros?.fats || 0
+                return acc
+              }, { protein: 0, carbs: 0, fats: 0 })
+
+              return [
+                { label: "Proteínas", value: totals.protein },
+                { label: "Carbohidratos", value: totals.carbs },
+                { label: "Grasas", value: totals.fats },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg bg-background p-4">
+                  <p className="text-sm text-muted-foreground">{item.label}</p>
+                  <p className="text-2xl font-bold">{item.value}g</p>
+                </div>
+              ))
+            })()}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

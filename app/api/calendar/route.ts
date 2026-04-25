@@ -113,6 +113,8 @@ export async function POST(req: NextRequest) {
       routineId,
       mealPlanId,
       assignmentId,
+      capacity,
+      attendanceCode,
       duration,
       reminder
     } = data;
@@ -161,6 +163,9 @@ export async function POST(req: NextRequest) {
       routineId: routineId || null,
       mealPlanId: mealPlanId || null,
       assignmentId: assignmentId || null,
+      capacity: capacity || null,
+      bookedCount: 0,
+      attendanceCode: attendanceCode || null,
       duration: duration || null,
       reminder: reminder || { enabled: false }
     });

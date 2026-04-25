@@ -1,13 +1,31 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ExerciseCard } from "./exercise-card"
-import { ArrowLeft, Clock, TrendingUp } from "lucide-react"
+import { ArrowLeft, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
 import type { Routine } from "@/lib/data"
 
+type AssignedRoutine = Routine & {
+  assignmentId?: string
+  exercises: Array<{
+    _id?: string
+    exercise: {
+      _id: string
+      name: string
+      image?: string
+      instructions?: string
+    }
+    sets: number
+    reps: string
+    rest: string
+    instructions: string
+  }>
+}
+
 interface RoutineDetailViewProps {
-  routine: Routine
+  routine: AssignedRoutine
   onBack: () => void
 }
 
@@ -24,6 +42,30 @@ const difficultyLabels = {
 }
 
 export function RoutineDetailView({ routine, onBack }: RoutineDetailViewProps) {
+  const [completed, setCompleted] = useState<Record<string, boolean>>({})
+
+  const markSetCompleted = async (exerciseId: string, setNumber: number) => {
+    if (!routine.assignmentId) return
+
+    const key = `${exerciseId}-${setNumber}`
+    if (completed[key]) return
+
+    const response = await fetch(`/api/assignments/${routine.assignmentId}/progress`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        routineId: routine.id,
+        exerciseId,
+        setNumber,
+      }),
+    })
+
+    if (response.ok) {
+      setCompleted((current) => ({ ...current, [key]: true }))
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Button variant="ghost" onClick={onBack} className="gap-2">
@@ -58,7 +100,43 @@ export function RoutineDetailView({ routine, onBack }: RoutineDetailViewProps) {
         <h3 className="text-xl font-semibold mb-4">Ejercicios</h3>
         <div className="grid gap-6 md:grid-cols-2">
           {routine.exercises.map((exercise, index) => (
-            <ExerciseCard key={exercise.id} exercise={exercise} index={index} />
+            <div key={exercise._id || exercise.exercise._id} className="space-y-3">
+                <ExerciseCard
+                  exercise={{
+                    id: exercise.exercise._id,
+                  name: exercise.exercise.name,
+                  sets: exercise.sets,
+                  reps: exercise.reps,
+                  rest: exercise.rest,
+                  image: exercise.exercise.image || "/placeholder.svg",
+                  instructions: exercise.instructions || exercise.exercise.instructions || "",
+                }}
+                index={index}
+              />
+              <div className="rounded-lg border p-4 space-y-2">
+                <p className="text-sm font-medium">Series</p>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: exercise.sets }).map((_, i) => {
+                    const setNumber = i + 1
+                    const key = `${exercise.exercise._id}-${setNumber}`
+                    const isDone = completed[key]
+                    return (
+                      <Button
+                        key={key}
+                        type="button"
+                        size="sm"
+                        variant={isDone ? "default" : "outline"}
+                        onClick={() => markSetCompleted(exercise.exercise._id, setNumber)}
+                        disabled={isDone || !routine.assignmentId}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Serie {setNumber}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>

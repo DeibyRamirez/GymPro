@@ -34,6 +34,11 @@ export interface Meal {
   time: string
   foods: string[]
   calories: number
+  macros?: {
+    protein: number
+    carbs: number
+    fats: number
+  }
 }
 
 export interface Assignment {

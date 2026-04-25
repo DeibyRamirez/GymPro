@@ -40,6 +40,7 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
   const [description, setDescription] = useState("")
   const [duration, setDuration] = useState("")
   const [difficulty, setDifficulty] = useState<string>("intermediate")
+  const [trainingDaysPerWeek, setTrainingDaysPerWeek] = useState("5")
   const [exercises, setExercises] = useState<ExerciseForm[]>([
     {
       id: "1",
@@ -97,6 +98,7 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
       description: description.trim(),
       duration: duration.trim(),
       difficulty,
+      trainingDaysPerWeek: Number(trainingDaysPerWeek),
       exercises: exercises.map(ex => ({
         name: ex.name.trim(),
         sets: ex.sets.trim(),
@@ -186,6 +188,20 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
                   <SelectItem value="beginner">Principiante</SelectItem>
                   <SelectItem value="intermediate">Intermedio</SelectItem>
                   <SelectItem value="advanced">Avanzado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Días de entrenamiento por semana</Label>
+              <Select value={trainingDaysPerWeek} onValueChange={setTrainingDaysPerWeek}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="4">4 días</SelectItem>
+                  <SelectItem value="5">5 días</SelectItem>
+                  <SelectItem value="6">6 días</SelectItem>
                 </SelectContent>
               </Select>
             </div>

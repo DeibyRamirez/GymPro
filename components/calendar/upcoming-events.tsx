@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, CheckCircle2, Circle } from "lucide-react"
+import { Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, CheckCircle2, Circle, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CalendarEvent } from "@/lib/calendar-data"
 
@@ -31,6 +31,11 @@ const eventTypeConfig = {
     icon: ClipboardCheck,
     color: "bg-chart-4/10 text-chart-4",
     label: "Evaluación",
+  },
+  class: {
+    icon: Users,
+    color: "bg-violet-500/10 text-violet-700",
+    label: "Clase",
   },
 }
 

@@ -51,6 +51,10 @@ export function ViewRoutineDialog({ open, onOpenChange, routine }: ViewRoutineDi
               <TrendingUp className="h-4 w-4" />
               <span>{routine.exercises.length} ejercicios</span>
             </div>
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4" />
+              <span>{(routine as Routine & { trainingDaysPerWeek?: number }).trainingDaysPerWeek || 5} días/semana</span>
+            </div>
           </div>
         </DialogHeader>
 

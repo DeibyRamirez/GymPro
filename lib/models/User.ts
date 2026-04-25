@@ -11,7 +11,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'trainer' | 'client';
+  role: 'superadmin' | 'admin' | 'trainer' | 'client';
   avatar?: string;
   trainerId?: mongoose.Types.ObjectId; // Para clientes, ID del entrenador asignado
   isActive: boolean;
@@ -53,8 +53,8 @@ const UserSchema = new Schema<IUser>({
   role: {
     type: String,
     enum: {
-      values: ['admin', 'trainer', 'client'],
-      message: 'El rol debe ser admin, trainer o client'
+      values: ['superadmin', 'admin', 'trainer', 'client'],
+      message: 'El rol debe ser superadmin, admin, trainer o client'
     },
     required: [true, 'El rol es requerido'],
     default: 'client'

@@ -2,7 +2,7 @@ export interface CalendarEvent {
   id: string
   title: string
   date: Date
-  type: "workout" | "meal" | "rest" | "assessment"
+  type: "workout" | "meal" | "rest" | "assessment" | "class"
   completed: boolean
   description?: string
 }

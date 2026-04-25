@@ -39,6 +39,7 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
   const [description, setDescription] = useState(routine.description)
   const [duration, setDuration] = useState(routine.duration)
   const [difficulty, setDifficulty] = useState(routine.difficulty)
+  const [trainingDaysPerWeek, setTrainingDaysPerWeek] = useState(String((routine as Routine & { trainingDaysPerWeek?: number }).trainingDaysPerWeek || 5))
   const [exercises, setExercises] = useState<ExerciseForm[]>(routine.exercises)
   const [loading, setLoading] = useState(false)
 
@@ -101,6 +102,7 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
         description,
         duration,
         difficulty,
+        trainingDaysPerWeek: Number(trainingDaysPerWeek),
         exercises: exercises.map((ex) => ({
           name: ex.name,
           sets: ex.sets,
@@ -214,6 +216,20 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
                   <SelectItem value="beginner">Principiante</SelectItem>
                   <SelectItem value="intermediate">Intermedio</SelectItem>
                   <SelectItem value="advanced">Avanzado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Días de entrenamiento por semana</Label>
+              <Select value={trainingDaysPerWeek} onValueChange={setTrainingDaysPerWeek}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="4">4 días</SelectItem>
+                  <SelectItem value="5">5 días</SelectItem>
+                  <SelectItem value="6">6 días</SelectItem>
                 </SelectContent>
               </Select>
             </div>

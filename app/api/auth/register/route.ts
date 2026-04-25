@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const userRole = role && validRoles.includes(role) ? role : 'client';
     
     // No permitir crear administradores desde el registro
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'superadmin') {
       return NextResponse.json(
         { error: 'No se puede crear una cuenta de administrador desde el registro' },
         { status: 403 }

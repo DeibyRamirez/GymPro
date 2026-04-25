@@ -22,7 +22,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [role, setRole] = useState<"admin" | "trainer" | "client">("client")
+  const [role, setRole] = useState<"trainer" | "client">("client")
   // Campos de información del gimnasio
   const [age, setAge] = useState("")
   const [weight, setWeight] = useState("")
@@ -173,7 +173,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps)
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Tipo de cuenta</Label>
-              <Select value={role} onValueChange={(value: "admin" | "trainer" | "client") => setRole(value)}>
+              <Select value={role} onValueChange={(value: "trainer" | "client") => setRole(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un tipo" />
                 </SelectTrigger>

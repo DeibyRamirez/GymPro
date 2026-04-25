@@ -11,6 +11,8 @@ import { CreateRoutineDialog } from "./create-routine-dialog"
 import { RoutineDetailView } from "@/components/routines/routine-detail-view"
 import { MealPlanDetailView } from "@/components/meal-plans/meal-plan-detail-view"
 import { CalendarDashboard } from "./calendar-dashboard"
+import { Storefront } from "./storefront"
+import { MachinesSection } from "./machines-section"
 import { Button } from "@/components/ui/button"
 import { Plus, User as UserIcon, Loader2 } from "lucide-react"
 import type { User } from "@/lib/auth"
@@ -25,8 +27,29 @@ interface Routine {
   description: string
   duration: string
   difficulty: 'beginner' | 'intermediate' | 'advanced'
-  exercises: unknown[]
+  exercises: Array<{
+    _id?: string
+    exercise: {
+      _id: string
+      name: string
+      image?: string
+      instructions?: string
+      muscleGroups?: string[]
+      equipment?: string[]
+      sets?: number
+      reps?: string
+      rest?: string
+      difficulty?: 'beginner' | 'intermediate' | 'advanced'
+    }
+    sets: number
+    reps: string
+    rest: string
+    instructions: string
+    order?: number
+  }>
   createdBy: string
+  assignmentId?: string
+  routineProgress?: Array<{ routineId: string; exerciseId: string; setNumber: number; completedAt: string }>
 }
 
 interface MealPlan {
@@ -62,16 +85,20 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
     const loadDashboardData = async () => {
       setLoading(true)
       try {
-        // Cargar rutinas del cliente
-        const routinesResponse = await fetch("/api/routines?limit=1", { credentials: "include" })
-        if (routinesResponse.ok) {
-          const routinesData = await routinesResponse.json()
-          if (routinesData.routines && routinesData.routines.length > 0) {
-            setRoutine(routinesData.routines[0])
+        const assignmentsResponse = await fetch("/api/assignments", { credentials: "include" })
+        if (assignmentsResponse.ok) {
+          const assignmentsData = await assignmentsResponse.json()
+          const activeAssignment = assignmentsData.assignments?.find((item: { routineId?: Routine }) => item.routineId)
+          if (activeAssignment?.routineId) {
+            setRoutine({
+              ...activeAssignment.routineId,
+              id: activeAssignment.routineId.id || activeAssignment.routineId._id,
+              assignmentId: activeAssignment.id || activeAssignment._id,
+              routineProgress: activeAssignment.routineProgress || [],
+            })
           }
         }
 
-        // Cargar planes alimenticios del cliente
         const mealPlansResponse = await fetch("/api/meal-plans?limit=1", { credentials: "include" })
         if (mealPlansResponse.ok) {
           const mealPlansData = await mealPlansResponse.json()
@@ -80,7 +107,6 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
           }
         }
 
-        // Cargar datos del entrenador si existe
         if (client.trainerId) {
           const trainerResponse = await fetch(`/api/users/${client.trainerId}`, { credentials: "include" })
           if (trainerResponse.ok) {
@@ -99,12 +125,17 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
   }, [client.trainerId, client.id])
 
   const handleRoutineCreated = () => {
-    // Recargar rutinas
-    fetch("/api/routines?limit=1", { credentials: "include" })
+    fetch("/api/assignments", { credentials: "include" })
       .then(res => res.json())
       .then(data => {
-        if (data.routines && data.routines.length > 0) {
-          setRoutine(data.routines[0])
+        const activeAssignment = data.assignments?.find((item: { routineId?: Routine }) => item.routineId)
+        if (activeAssignment?.routineId) {
+          setRoutine({
+            ...activeAssignment.routineId,
+            id: activeAssignment.routineId.id || activeAssignment.routineId._id,
+            assignmentId: activeAssignment.id || activeAssignment._id,
+            routineProgress: activeAssignment.routineProgress || [],
+          })
         }
       })
     setShowCreateRoutine(false)
@@ -127,7 +158,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
   }
 
   if (viewingCalendar) {
-    return <CalendarDashboard onBack={() => setViewingCalendar(false)} />
+    return <CalendarDashboard onBack={() => setViewingCalendar(false)} assignmentId={routine?.assignmentId} />
   }
 
   if (showProfile) {
@@ -159,21 +190,25 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
             <UserIcon className="mr-2 h-4 w-4" />
             Mi Perfil
           </Button>
-          {/* <Button onClick={() => setShowCreateRoutine(true)}>
+          <Button onClick={() => setShowCreateRoutine(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Crear Rutina
-          </Button> */}
+          </Button>
         </div>
       </div>
 
       <ProgressOverview clientId={client.id} />
+
+      <Storefront />
+
+      <MachinesSection />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           {trainer && <TrainerInfoCard trainer={trainer} />}
 
           <div className="grid gap-6 md:grid-cols-2">
-            {routine ? (
+          {routine ? (
               <AssignedRoutineCard routine={routine} onViewDetails={() => setViewingRoutine(routine)} />
             ) : (
               <div className="p-6 border rounded-lg bg-muted/50 text-center">

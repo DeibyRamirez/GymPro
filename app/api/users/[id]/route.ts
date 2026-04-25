@@ -18,9 +18,9 @@ async function verifyAuth(req: NextRequest) {
 type UserUpdateBody = Partial<{
   name: string
   email: string
-  role: 'admin' | 'trainer' | 'client'
+  role: 'superadmin' | 'admin' | 'trainer' | 'client'
   avatar: string
-  trainerId: string
+  trainerId: string | null
   age: number
   weight: number
   height: number
@@ -31,6 +31,8 @@ type UserUpdateBody = Partial<{
   medicalConditions: string
   isActive: boolean
 }>
+
+const updatableFields = ['name', 'email', 'role', 'avatar', 'trainerId', 'age', 'weight', 'height', 'gender', 'phone', 'goal', 'activityLevel', 'medicalConditions', 'isActive'] as const
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -71,18 +73,32 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const currentUser = await verifyAuth(req);
     const { id } = await context.params;
 
-    if (currentUser.role !== 'admin' && currentUser._id.toString() !== id) {
+    if (!['admin', 'superadmin'].includes(currentUser.role) && currentUser._id.toString() !== id) {
       return NextResponse.json({ error: 'No tienes permisos para editar este usuario' }, { status: 403 });
     }
 
     const body = (await req.json()) as UserUpdateBody;
-    const updateData: UserUpdateBody = {};
+    const updateData: Record<string, unknown> = {};
 
-    for (const key of ['name', 'email', 'role', 'avatar', 'trainerId', 'age', 'weight', 'height', 'gender', 'phone', 'goal', 'activityLevel', 'medicalConditions', 'isActive']) {
-      if (body[key] !== undefined) updateData[key] = body[key];
+    for (const key of updatableFields) {
+      const value = body[key];
+      if (value !== undefined) updateData[key] = value;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).select('-password');
+    if (updateData.role && updateData.role !== 'client' && body.trainerId === undefined) {
+      updateData.trainerId = null;
+    }
+
+    const user = await User.findById(id);
+    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+
+    Object.entries(updateData).forEach(([key, value]) => {
+      user.set(key, value);
+    });
+
+    await user.save();
+
+    const updatedUser = await User.findById(id).select('-password');
     if (!updatedUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
 
     return NextResponse.json({
@@ -108,7 +124,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const currentUser = await verifyAuth(req);
     const { id } = await context.params;
 
-    if (currentUser.role !== 'admin' && currentUser._id.toString() !== id) {
+    if (!['admin', 'superadmin'].includes(currentUser.role) && currentUser._id.toString() !== id) {
       return NextResponse.json({ error: 'No tienes permisos para eliminar este usuario' }, { status: 403 });
     }
 

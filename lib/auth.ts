@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "trainer" | "client"
+export type UserRole = "superadmin" | "admin" | "trainer" | "client"
 
 export interface User {
   id: string
@@ -11,6 +11,13 @@ export interface User {
 
 // Simulación de usuarios para demostración
 export const mockUsers: User[] = [
+  {
+    id: "0",
+    name: "Super Admin",
+    email: "superadmin@fitpro.com",
+    role: "superadmin",
+    avatar: "/admin-interface.png",
+  },
   {
     id: "1",
     name: "Admin Principal",

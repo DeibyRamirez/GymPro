@@ -23,6 +23,8 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
   const [assignments, setAssignments] = useState<Array<{ clientId?: { _id?: string; id?: string } | string }>>([])
 
   useEffect(() => {
+    let mounted = true
+
     const load = async () => {
       const [clientsRes, assignmentsRes] = await Promise.all([
         fetch(`/api/users?role=client&trainerId=${trainerId}`, { credentials: 'include' }),
@@ -32,11 +34,19 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
       const clientsData = await clientsRes.json()
       const assignmentsData = await assignmentsRes.json()
 
-      setClients(clientsData.users || [])
-      setAssignments(assignmentsData.assignments || [])
+      if (mounted) {
+        setClients(clientsData.users || [])
+        setAssignments(assignmentsData.assignments || [])
+      }
     }
 
     load()
+    const interval = window.setInterval(load, 15000)
+
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
   }, [trainerId])
 
   const refreshAssignments = async () => {
@@ -69,7 +79,7 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
     setMealPlanDialogOpen(true)
   }
 
-  const handleRoutineAssigned = async (routineId: string) => {
+  const handleRoutineAssigned = async (payload: { routineId: string; durationWeeks: number; weeklySchedule: Array<{ dayOfWeek: number; isRestDay: boolean; title?: string }> }) => {
     if (!selectedClient) return
 
     await fetch('/api/assignments', {
@@ -79,8 +89,10 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
       body: JSON.stringify({
         clientId: selectedClient.id,
         trainerId,
-        routineId,
+        routineId: payload.routineId,
         startDate: new Date().toISOString(),
+        durationWeeks: payload.durationWeeks,
+        weeklySchedule: payload.weeklySchedule,
       }),
     })
 

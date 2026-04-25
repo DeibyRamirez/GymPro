@@ -27,6 +27,9 @@ interface EditMealPlanDialogProps {
 
 interface MealForm extends Omit<Meal, "foods"> {
   foods: string;
+  protein: string;
+  carbs: string;
+  fats: string;
 }
 
 export function EditMealPlanDialog({
@@ -42,6 +45,9 @@ export function EditMealPlanDialog({
     plan.meals.map((meal) => ({
       ...meal,
       foods: meal.foods.join(", "),
+      protein: meal.macros?.protein?.toString() || "",
+      carbs: meal.macros?.carbs?.toString() || "",
+      fats: meal.macros?.fats?.toString() || "",
     }))
   );
   const [loading, setLoading] = useState(false);
@@ -55,6 +61,9 @@ export function EditMealPlanDialog({
         time: "",
         foods: "",
         calories: 0,
+        protein: "",
+        carbs: "",
+        fats: "",
       },
     ]);
   };
@@ -92,6 +101,11 @@ export function EditMealPlanDialog({
         meals: meals.map((m) => ({
           ...m,
           foods: m.foods.split(",").map((f) => f.trim()),
+          macros: {
+            protein: Number.parseInt(m.protein) || 0,
+            carbs: Number.parseInt(m.carbs) || 0,
+            fats: Number.parseInt(m.fats) || 0,
+          },
         })),
       };
 
@@ -265,7 +279,22 @@ export function EditMealPlanDialog({
                           onChange={(e) =>
                             updateMeal(meal.id, "calories", Number.parseInt(e.target.value) || 0)
                           }
-                        />
+                          />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Proteínas (g)</Label>
+                        <Input value={meal.protein} onChange={(e) => updateMeal(meal.id, "protein", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Carbohidratos (g)</Label>
+                        <Input value={meal.carbs} onChange={(e) => updateMeal(meal.id, "carbs", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Grasas (g)</Label>
+                        <Input value={meal.fats} onChange={(e) => updateMeal(meal.id, "fats", e.target.value)} />
                       </div>
                     </div>
 

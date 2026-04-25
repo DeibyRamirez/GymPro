@@ -6,13 +6,16 @@ export interface ICalendarEvent extends Document {
   title: string;
   description?: string;
   date: Date;
-  type: 'workout' | 'meal' | 'rest' | 'assessment' | 'appointment' | 'reminder';
+  type: 'workout' | 'meal' | 'rest' | 'assessment' | 'appointment' | 'reminder' | 'class';
   completed: boolean;
   userId: mongoose.Types.ObjectId;
   trainerId?: mongoose.Types.ObjectId;
   routineId?: mongoose.Types.ObjectId;
   mealPlanId?: mongoose.Types.ObjectId;
   assignmentId?: mongoose.Types.ObjectId;
+  capacity?: number;
+  bookedCount?: number;
+  attendanceCode?: string;
   duration?: number; // en minutos
   reminder?: {
     enabled: boolean;
@@ -41,8 +44,8 @@ const CalendarEventSchema = new Schema<ICalendarEvent>({
   type: {
     type: String,
     enum: {
-      values: ['workout', 'meal', 'rest', 'assessment', 'appointment', 'reminder'],
-      message: 'El tipo debe ser workout, meal, rest, assessment, appointment o reminder'
+      values: ['workout', 'meal', 'rest', 'assessment', 'appointment', 'reminder', 'class'],
+      message: 'El tipo debe ser workout, meal, rest, assessment, appointment, reminder o class'
     },
     required: [true, 'El tipo de evento es requerido']
   },
@@ -74,6 +77,19 @@ const CalendarEventSchema = new Schema<ICalendarEvent>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Assignment',
     default: null
+  },
+  capacity: {
+    type: Number,
+    min: [1, 'La capacidad mínima es 1']
+  },
+  bookedCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  attendanceCode: {
+    type: String,
+    trim: true
   },
   duration: {
     type: Number,

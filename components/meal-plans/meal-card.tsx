@@ -35,6 +35,23 @@ export function MealCard({ meal }: MealCardProps) {
             ))}
           </ul>
         </div>
+
+        {meal.macros && (
+          <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+            <div className="rounded-md bg-muted/50 p-2 text-center">
+              <p className="font-semibold">P</p>
+              <p>{meal.macros.protein}g</p>
+            </div>
+            <div className="rounded-md bg-muted/50 p-2 text-center">
+              <p className="font-semibold">C</p>
+              <p>{meal.macros.carbs}g</p>
+            </div>
+            <div className="rounded-md bg-muted/50 p-2 text-center">
+              <p className="font-semibold">G</p>
+              <p>{meal.macros.fats}g</p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ClientsView } from "./clients-view"
+import { GroupClassesPanel } from "./group-classes-panel"
 import { RoutinesLibrary } from "./routines-library"
 import { MealPlansLibrary } from "./meal-plans-library"
 import { Users, Dumbbell, UtensilsCrossed, BarChart3 } from "lucide-react"
@@ -19,26 +20,32 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true
+
     async function fetchDashboardTrainer() {
-        try {
-          const res = await fetch("/api/dashboard/stats", {
-            method: "GET",
-            credentials: "include",
-          });
+      try {
+        const res = await fetch("/api/dashboard/stats", {
+          method: "GET",
+          credentials: "include",
+        })
 
-        const data = await res.json();
-        setStats(data.stats);
+        const data = await res.json()
+        if (mounted) setStats(data.stats)
+      } catch (err: unknown) {
+        console.log("Error al obtener dashboard", err)
+      } finally {
+        if (mounted) setLoading(false)
       }
-      catch (err: unknown) {
-        console.log("Error al obtener dashboard", err);
-      }
-      finally {
-        setLoading(false);
-      }
-
     }
-    fetchDashboardTrainer();
-  }, []);
+
+    fetchDashboardTrainer()
+    const interval = window.setInterval(fetchDashboardTrainer, 30000)
+
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
+  }, [trainerId])
 
   if (loading) return <p>Cargando...</p>;
 
@@ -105,7 +112,7 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 h-auto p-1">
           <TabsTrigger value="clients" className="gap-2 py-3">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Mis Clientes</span>
@@ -121,6 +128,11 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
             <span className="hidden sm:inline">Planes Alimenticios</span>
             <span className="sm:hidden">Planes</span>
           </TabsTrigger>
+          <TabsTrigger value="classes" className="gap-2 py-3">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Clases Grupales</span>
+            <span className="sm:hidden">Clases</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="clients" className="space-y-4">
@@ -133,6 +145,10 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
 
         <TabsContent value="meals" className="space-y-4">
           <MealPlansLibrary trainerId={trainerId} />
+        </TabsContent>
+
+        <TabsContent value="classes" className="space-y-4">
+          <GroupClassesPanel trainerId={trainerId} />
         </TabsContent>
       </Tabs>
     </div>

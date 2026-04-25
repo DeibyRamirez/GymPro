@@ -69,7 +69,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <AppHeader user={currentUser} onLogout={handleLogout} />
       <main className="container py-6 px-4">
-        {currentUser.role === "admin" && <AdminDashboard />}
+        {(currentUser.role === "superadmin" || currentUser.role === "admin") && <AdminDashboard />}
         {currentUser.role === "trainer" && <TrainerDashboard trainerId={currentUser.id} />}
         {currentUser.role === "client" && <ClientDashboard client={currentUser} />}
       </main>

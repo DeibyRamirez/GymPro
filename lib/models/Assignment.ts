@@ -5,6 +5,15 @@ export interface IAssignment extends Document {
   trainerId: mongoose.Types.ObjectId;
   routineId?: mongoose.Types.ObjectId;
   mealPlanId?: mongoose.Types.ObjectId;
+  durationWeeks?: number;
+  weeklySchedule?: {
+    dayOfWeek: number;
+    isRestDay: boolean;
+    routineId?: mongoose.Types.ObjectId | null;
+    mealPlanId?: mongoose.Types.ObjectId | null;
+    title?: string;
+    notes?: string;
+  }[];
   startDate: Date;
   endDate?: Date;
   status: 'active' | 'completed' | 'pending' | 'cancelled';
@@ -13,6 +22,12 @@ export interface IAssignment extends Document {
     date: Date;
     completion: number; // porcentaje 0-100
     notes?: string;
+  }[];
+  routineProgress?: {
+    routineId: mongoose.Types.ObjectId;
+    exerciseId: mongoose.Types.ObjectId;
+    setNumber: number;
+    completedAt: Date;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +54,42 @@ const AssignmentSchema = new Schema<IAssignment>({
     ref: 'MealPlan',
     default: null
   },
+  durationWeeks: {
+    type: Number,
+    min: [1, 'La duración mínima es 1 semana'],
+    max: [52, 'La duración máxima es 52 semanas'],
+    default: 4
+  },
+  weeklySchedule: [{
+    dayOfWeek: {
+      type: Number,
+      min: 0,
+      max: 6,
+      required: true
+    },
+    isRestDay: {
+      type: Boolean,
+      default: false
+    },
+    routineId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Routine',
+      default: null
+    },
+    mealPlanId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MealPlan',
+      default: null
+    },
+    title: {
+      type: String,
+      trim: true
+    },
+    notes: {
+      type: String,
+      trim: true
+    }
+  }],
   startDate: {
     type: Date,
     required: [true, 'La fecha de inicio es requerida'],
@@ -80,6 +131,28 @@ const AssignmentSchema = new Schema<IAssignment>({
     notes: {
       type: String,
       maxlength: [500, 'Las notas no pueden exceder 500 caracteres']
+    }
+  }]
+  ,routineProgress: [{
+    routineId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Routine',
+      required: true
+    },
+    exerciseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Exercise',
+      required: true
+    },
+    setNumber: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+    completedAt: {
+      type: Date,
+      required: true,
+      default: Date.now
     }
   }]
 }, {

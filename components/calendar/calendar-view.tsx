@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, Dumbbell, UtensilsCrossed, Moon, ClipboardCheck } from "lucide-react"
+import { ChevronLeft, ChevronRight, Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CalendarEvent } from "@/lib/calendar-data"
 
@@ -32,6 +32,11 @@ const eventTypeConfig = {
     icon: ClipboardCheck,
     color: "bg-chart-4/10 text-chart-4 border-chart-4/20",
     label: "Evaluación",
+  },
+  class: {
+    icon: Users,
+    color: "bg-violet-500/10 text-violet-700 border-violet-200",
+    label: "Clase",
   },
 }
 

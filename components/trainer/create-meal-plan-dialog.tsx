@@ -29,12 +29,16 @@ interface MealForm {
   time: string
   foods: string
   calories: string
+  protein: string
+  carbs: string
+  fats: string
 }
 
 export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMealPlanDialogProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [totalCalories, setTotalCalories] = useState("")
+  const [goal, setGoal] = useState<"definicion" | "volumen" | "mantenimiento">("mantenimiento")
   const [meals, setMeals] = useState<MealForm[]>([
     {
       id: "1",
@@ -42,20 +46,32 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
       time: "",
       foods: "",
       calories: "",
+      protein: "",
+      carbs: "",
+      fats: "",
     },
   ])
+
+  const getSuggestedCalories = (selectedGoal: typeof goal) => {
+    if (selectedGoal === "definicion") return "1800"
+    if (selectedGoal === "volumen") return "2800"
+    return "2200"
+  }
 
   const addMeal = () => {
     setMeals([
       ...meals,
-      {
-        id: Date.now().toString(),
-        name: "",
-        time: "",
-        foods: "",
-        calories: "",
-      },
-    ])
+        {
+          id: Date.now().toString(),
+          name: "",
+          time: "",
+          foods: "",
+          calories: "",
+          protein: "",
+          carbs: "",
+          fats: "",
+        },
+      ])
   }
 
   const removeMeal = (id: string) => {
@@ -82,6 +98,11 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
         time: m.time,
         foods: m.foods.split(',').map(f => f.trim()), // ✅ arreglo
         calories: parseInt(m.calories),
+        macros: {
+          protein: parseInt(m.protein) || 0,
+          carbs: parseInt(m.carbs) || 0,
+          fats: parseInt(m.fats) || 0,
+        },
       })),
       tags: []
     }
@@ -104,7 +125,8 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
       setName("")
       setDescription("")
       setTotalCalories("")
-      setMeals([{ id: "1", name: "", time: "", foods: "", calories: "" }])
+      setGoal("mantenimiento")
+      setMeals([{ id: "1", name: "", time: "", foods: "", calories: "", protein: "", carbs: "", fats: "" }])
       if (onSuccess) onSuccess()
       // window.location.reload()
     } catch (err: unknown) {
@@ -151,6 +173,18 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Objetivo nutricional</Label>
+              <div className="flex flex-wrap gap-2">
+                {(["definicion", "volumen", "mantenimiento"] as const).map((item) => (
+                  <Button key={item} type="button" variant={goal === item ? "default" : "outline"} onClick={() => { setGoal(item); setTotalCalories(getSuggestedCalories(item)) }}>
+                    {item === "definicion" ? "Definición" : item === "volumen" ? "Volumen" : "Mantenimiento"}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Sugerencia automática: {getSuggestedCalories(goal)} kcal/día</p>
             </div>
 
             <div className="space-y-2">
@@ -213,6 +247,21 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
                           value={meal.calories}
                           onChange={(e) => updateMeal(meal.id, "calories", e.target.value)}
                         />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label>Proteínas (g)</Label>
+                        <Input type="number" placeholder="35" value={meal.protein} onChange={(e) => updateMeal(meal.id, "protein", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Carbohidratos (g)</Label>
+                        <Input type="number" placeholder="50" value={meal.carbs} onChange={(e) => updateMeal(meal.id, "carbs", e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Grasas (g)</Label>
+                        <Input type="number" placeholder="12" value={meal.fats} onChange={(e) => updateMeal(meal.id, "fats", e.target.value)} />
                       </div>
                     </div>
 

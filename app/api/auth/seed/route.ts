@@ -6,6 +6,8 @@ import Routine from '@/lib/models/Routine';
 import MealPlan from '@/lib/models/MealPlan';
 import Assignment from '@/lib/models/Assignment';
 import CalendarEvent from '@/lib/models/CalendarEvent';
+import Product from '@/lib/models/Product';
+import Sale from '@/lib/models/Sale';
 
 // Solo permitir en desarrollo
 export async function POST() {
@@ -27,7 +29,9 @@ export async function POST() {
       Routine.deleteMany({}),
       MealPlan.deleteMany({}),
       Assignment.deleteMany({}),
-      CalendarEvent.deleteMany({})
+      CalendarEvent.deleteMany({}),
+      Product.deleteMany({}),
+      Sale.deleteMany({})
     ]);
     console.log('🧹 Base de datos limpiada');
 
@@ -288,6 +292,49 @@ export async function POST() {
     const createdMealPlans = await MealPlan.insertMany(mealPlans);
     console.log('🍽️ Planes alimenticios creados');
 
+    // 4. Crear productos del catálogo
+    const products = [
+      {
+        name: 'Proteína Whey 2lb',
+        description: 'Suplemento de proteína para recuperación y masa muscular',
+        category: 'suplemento',
+        price: 59.99,
+        stock: 18,
+        lowStockThreshold: 5,
+        image: '/placeholder-user.jpg'
+      },
+      {
+        name: 'Shaker Gym Pro',
+        description: 'Botella mezcladora resistente para batidos y agua',
+        category: 'accesorio',
+        price: 12.99,
+        stock: 30,
+        lowStockThreshold: 10,
+        image: '/placeholder-user.jpg'
+      },
+      {
+        name: 'Bebida Isotónica',
+        description: 'Bebida de hidratación para entrenamientos intensos',
+        category: 'bebida',
+        price: 3.5,
+        stock: 48,
+        lowStockThreshold: 12,
+        image: '/placeholder-user.jpg'
+      },
+      {
+        name: 'Creatina Monohidratada',
+        description: 'Apoyo para fuerza, volumen y rendimiento',
+        category: 'suplemento',
+        price: 24.99,
+        stock: 4,
+        lowStockThreshold: 5,
+        image: '/placeholder-user.jpg'
+      }
+    ];
+
+    const createdProducts = await Product.insertMany(products);
+    console.log('🛍️ Productos creados');
+
     // 5. Crear asignaciones
     const assignments = [
       {
@@ -360,6 +407,18 @@ export async function POST() {
         userId: createdClients[0]._id,
         trainerId: trainer1?._id,
         duration: 30
+      },
+      {
+        title: 'Clase Funcional',
+        date: new Date('2025-01-18T18:00:00'),
+        type: 'class',
+        completed: false,
+        userId: createdClients[0]._id,
+        trainerId: trainer1?._id,
+        capacity: 12,
+        bookedCount: 7,
+        attendanceCode: 'CLASE-FUNCIONAL-01',
+        duration: 45
       }
     ];
 
@@ -374,6 +433,7 @@ export async function POST() {
       routines: createdRoutines.length,
       mealPlans: createdMealPlans.length,
       assignments: createdAssignments.length,
+      products: createdProducts.length,
       events: calendarEvents.length
     };
 

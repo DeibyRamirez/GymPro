@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     let stats: Record<string, unknown> = {};
 
-    if (user.role === 'admin') {
+    if (user.role === 'admin' || user.role === 'superadmin') {
       // Estadísticas para administradores
       const [
         totalUsers,
