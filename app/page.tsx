@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { LoginForm } from "@/components/auth/login-form"
 import { RegisterForm } from "@/components/auth/register-form"
 import { AppHeader } from "@/components/layout/app-header"
@@ -12,6 +12,24 @@ import type { User } from "@/lib/auth"
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [showRegister, setShowRegister] = useState(false)
+  const [loadingSession, setLoadingSession] = useState(true)
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'include' })
+        const data = await response.json()
+
+        if (response.ok && data.user) {
+          setCurrentUser(data.user)
+        }
+      } finally {
+        setLoadingSession(false)
+      }
+    }
+
+    loadSession()
+  }, [])
 
   const handleLogin = (user: User) => {
     setCurrentUser(user)
@@ -22,9 +40,12 @@ export default function Home() {
   }
 
   const handleLogout = () => {
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
     setCurrentUser(null)
-    // Limpiar cookie de autenticación
-    document.cookie = "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+  }
+
+  if (loadingSession) {
+    return <div className="min-h-screen bg-background" />
   }
 
   if (!currentUser) {

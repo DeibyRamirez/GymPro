@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
-import { mockMealPlans } from "@/lib/data"
 import { Flame } from "lucide-react"
 
 interface AssignMealPlanDialogProps {
@@ -25,6 +24,15 @@ interface AssignMealPlanDialogProps {
 
 export function AssignMealPlanDialog({ open, onOpenChange, clientName, onAssign }: AssignMealPlanDialogProps) {
   const [selectedPlan, setSelectedPlan] = useState<string>("")
+  const [mealPlans, setMealPlans] = useState<any[]>([])
+
+  useEffect(() => {
+    if (!open) return
+
+    fetch('/api/meal-plans?limit=100', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => setMealPlans(data.mealPlans || []))
+  }, [open])
 
   const handleAssign = () => {
     if (selectedPlan) {
@@ -43,13 +51,13 @@ export function AssignMealPlanDialog({ open, onOpenChange, clientName, onAssign 
         </DialogHeader>
 
         <RadioGroup value={selectedPlan} onValueChange={setSelectedPlan} className="space-y-3">
-          {mockMealPlans.map((plan) => (
+          {mealPlans.map((plan) => (
             <div
-              key={plan.id}
+              key={plan._id}
               className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/5 cursor-pointer"
             >
-              <RadioGroupItem value={plan.id} id={plan.id} className="mt-1" />
-              <Label htmlFor={plan.id} className="flex-1 cursor-pointer">
+              <RadioGroupItem value={plan._id} id={plan._id} className="mt-1" />
+              <Label htmlFor={plan._id} className="flex-1 cursor-pointer">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold">{plan.name}</h4>

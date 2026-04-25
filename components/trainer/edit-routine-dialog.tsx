@@ -122,16 +122,14 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
         })),
       }
 
-      const token = localStorage.getItem("auth-token")
-
       console.log("🧠 ID de la rutina que se intenta actualizar:", routine._id)
 
       const res = await fetch(`/api/routines/${routine._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
         },
+        credentials: "include",
         body: JSON.stringify(updatedRoutine),
       })
 
@@ -164,12 +162,12 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
 
     setLoading(true)
     try {
-      const token = localStorage.getItem("auth-token")
       const res = await fetch(`/api/routines/${routine._id}`, {
         method: "DELETE",
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
+        credentials: "include",
       })
 
       if (!res.ok) {

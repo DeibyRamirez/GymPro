@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Dumbbell, Clock, TrendingUp, Edit, Trash2, Eye, Copy } from "lucide-react"
-import { mockRoutines, type Routine } from "@/lib/data"
+import type { Routine } from "@/lib/data"
 import { CreateRoutineDialog } from "./create-routine-dialog"
 import { EditRoutineDialog } from "./edit-routine-dialog"
 import { ViewRoutineDialog } from "./view-routine-dialog"
@@ -73,10 +73,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
 
         const res = await fetch("/api/routines", {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("auth-token")}`
-          }
+          credentials: "include"
         })
 
         if (!res.ok) throw new Error("Error al obtener rutinas")
@@ -185,10 +182,27 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
       </div>
 
       {/* Diálogos */}
-      <CreateRoutineDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <CreateRoutineDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={async () => {
+          const res = await fetch("/api/routines", { credentials: "include" })
+          const data = await res.json()
+          setRoutines(data.routines || [])
+        }}
+      />
       {selectedRoutine && (
         <>
-          <EditRoutineDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} routine={selectedRoutine} />
+          <EditRoutineDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            routine={selectedRoutine}
+            onUpdated={async () => {
+              const res = await fetch("/api/routines", { credentials: "include" })
+              const data = await res.json()
+              setRoutines(data.routines || [])
+            }}
+          />
           <ViewRoutineDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} routine={selectedRoutine} />
         </>
       )}

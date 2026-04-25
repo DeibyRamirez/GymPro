@@ -158,7 +158,7 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
 };
 
 // Índices
-UserSchema.index({ email: 1 }, { unique: true });
+
 UserSchema.index({ role: 1 });
 UserSchema.index({ trainerId: 1 });
 UserSchema.index({ isActive: 1 });

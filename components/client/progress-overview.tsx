@@ -18,7 +18,7 @@ export function ProgressOverview({ clientId }: ProgressOverviewProps) {
     const loadData = async () => {
       try {
         // Cargar datos del usuario
-        const profileResponse = await fetch("/api/users/profile")
+        const profileResponse = await fetch("/api/users/profile", { credentials: "include" })
         if (profileResponse.ok) {
           const profileData = await profileResponse.json()
           setUserData(profileData.user)
@@ -30,7 +30,8 @@ export function ProgressOverview({ clientId }: ProgressOverviewProps) {
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
         
         const calendarResponse = await fetch(
-          `/api/calendar?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}&type=workout`
+          `/api/calendar?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}&type=workout`,
+          { credentials: "include" }
         )
         if (calendarResponse.ok) {
           const calendarData = await calendarResponse.json()

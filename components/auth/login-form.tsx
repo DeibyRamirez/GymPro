@@ -38,6 +38,7 @@ export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           email,
           password,

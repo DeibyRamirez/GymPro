@@ -90,6 +90,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps)
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           name,
           email,

@@ -1,7 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarView } from "@/components/calendar/calendar-view"
 import { UpcomingEvents } from "@/components/calendar/upcoming-events"
 import { ArrowLeft, Loader2 } from "lucide-react"
@@ -22,6 +27,12 @@ interface CalendarEvent {
 export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [date, setDate] = useState("")
+  const [type, setType] = useState<CalendarEvent['type']>('workout')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -32,7 +43,8 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
         const endDate = new Date(now.getFullYear(), now.getMonth() + 2, 0)
         
         const response = await fetch(
-          `/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+          `/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
+          { credentials: "include" }
         )
         
         if (response.ok) {
@@ -56,6 +68,69 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
 
     loadEvents()
   }, [])
+
+  const refreshEvents = async () => {
+    const now = new Date()
+    const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 2, 0)
+    const response = await fetch(
+      `/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
+      { credentials: "include" }
+    )
+    if (response.ok) {
+      const data = await response.json()
+      const formattedEvents = data.events?.map((event: any) => ({
+        id: event.id || event._id,
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        type: event.type,
+        completed: event.completed || false
+      })) || []
+      setEvents(formattedEvents)
+    }
+  }
+
+  const updateEventStatus = async (eventId: string, completed: boolean) => {
+    await fetch(`/api/calendar/${eventId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ completed }),
+    })
+    await refreshEvents()
+  }
+
+  const deleteEvent = async (eventId: string) => {
+    await fetch(`/api/calendar/${eventId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    await refreshEvents()
+  }
+
+  const handleCreateEvent = async () => {
+    if (!title || !date) return
+
+    setSaving(true)
+    try {
+      // El evento se crea para el usuario actual por defecto.
+      await fetch('/api/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title, description, date, type }),
+      })
+      setCreateOpen(false)
+      setTitle('')
+      setDescription('')
+      setDate('')
+      setType('workout')
+      await refreshEvents()
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -83,14 +158,57 @@ export function CalendarDashboard({ onBack }: CalendarDashboardProps) {
         <p className="text-muted-foreground mt-2">Planifica y sigue tu progreso de entrenamiento y nutrición</p>
       </div>
 
+      <div className="flex justify-end">
+        <Button onClick={() => setCreateOpen(true)}>Nuevo evento</Button>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <CalendarView events={events} />
         </div>
         <div>
-          <UpcomingEvents events={events} />
+          <UpcomingEvents events={events} onToggleComplete={updateEventStatus} onDelete={deleteEvent} />
         </div>
       </div>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear evento</DialogTitle>
+            <DialogDescription>Agrega un evento de entrenamiento, comida o evaluación al calendario.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Título</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Descripción</Label>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha</Label>
+              <Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select value={type} onValueChange={(value: any) => setType(value)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="workout">Entrenamiento</SelectItem>
+                  <SelectItem value="meal">Comida</SelectItem>
+                  <SelectItem value="rest">Descanso</SelectItem>
+                  <SelectItem value="assessment">Evaluación</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateEvent} disabled={saving}>{saving ? 'Guardando...' : 'Crear'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

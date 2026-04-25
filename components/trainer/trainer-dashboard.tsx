@@ -20,13 +20,11 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
 
   useEffect(() => {
     async function fetchDashboardTrainer() {
-      try {
-        const res = await fetch("/api/dashboard/stats", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${localStorage.getItem("auth-token")}`,
-          },
-        });
+        try {
+          const res = await fetch("/api/dashboard/stats", {
+            method: "GET",
+            credentials: "include",
+          });
 
         const data = await res.json();
         setStats(data.stats);

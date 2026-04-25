@@ -63,7 +63,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
       setLoading(true)
       try {
         // Cargar rutinas del cliente
-        const routinesResponse = await fetch("/api/routines?limit=1")
+        const routinesResponse = await fetch("/api/routines?limit=1", { credentials: "include" })
         if (routinesResponse.ok) {
           const routinesData = await routinesResponse.json()
           if (routinesData.routines && routinesData.routines.length > 0) {
@@ -72,7 +72,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
         }
 
         // Cargar planes alimenticios del cliente
-        const mealPlansResponse = await fetch("/api/meal-plans?limit=1")
+        const mealPlansResponse = await fetch("/api/meal-plans?limit=1", { credentials: "include" })
         if (mealPlansResponse.ok) {
           const mealPlansData = await mealPlansResponse.json()
           if (mealPlansData.mealPlans && mealPlansData.mealPlans.length > 0) {
@@ -82,7 +82,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
 
         // Cargar datos del entrenador si existe
         if (client.trainerId) {
-          const trainerResponse = await fetch(`/api/users/${client.trainerId}`)
+          const trainerResponse = await fetch(`/api/users/${client.trainerId}`, { credentials: "include" })
           if (trainerResponse.ok) {
             const trainerData = await trainerResponse.json()
             setTrainer(trainerData.user)
@@ -100,7 +100,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
 
   const handleRoutineCreated = () => {
     // Recargar rutinas
-    fetch("/api/routines?limit=1")
+    fetch("/api/routines?limit=1", { credentials: "include" })
       .then(res => res.json())
       .then(data => {
         if (data.routines && data.routines.length > 0) {

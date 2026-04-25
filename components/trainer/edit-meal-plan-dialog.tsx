@@ -113,14 +113,13 @@ export function EditMealPlanDialog({
         return;
       }
 
-      const token = localStorage.getItem("auth-token");
       console.log("🧠 ID del plan que se intenta actualizar:", plan._id);
       const res = await fetch(`/api/meal-plans/${plan._id || plan.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
         },
+        credentials: "include",
         body: JSON.stringify(updatedPlan),
       });
 
@@ -153,12 +152,12 @@ export function EditMealPlanDialog({
         alert("Error: el plan no tiene ID válido.");
         return;
       }
-      const token = localStorage.getItem("auth-token");
       const res = await fetch(`/api/meal-plans/${plan._id || plan.id}`, {
         method: "DELETE",
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
+        credentials: "include",
       });
 
       if (!res.ok) {

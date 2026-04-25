@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, UtensilsCrossed, Flame, Apple, Edit, Trash2, Eye, Copy } from "lucide-react"
-import { mockMealPlans, type MealPlan } from "@/lib/data"
+import type { MealPlan } from "@/lib/data"
 import { CreateMealPlanDialog } from "./create-meal-plan-dialog"
 import { EditMealPlanDialog } from "./edit-meal-plan-dialog"
 import { ViewMealPlanDialog } from "./view-meal-plan-dialog"
@@ -51,10 +51,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
 
         const res = await fetch("/api/meal-plans", {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("auth-token")}`
-          }
+          credentials: "include"
         })
         if (!res.ok) throw new Error("Error al obtener planes alimenticios")
 
@@ -177,10 +174,27 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
       </div>
 
       {/* Diálogos */}
-      <CreateMealPlanDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <CreateMealPlanDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={async () => {
+          const res = await fetch("/api/meal-plans", { credentials: "include" })
+          const data = await res.json()
+          setMealsPlans(data.mealPlans || [])
+        }}
+      />
       {selectedPlan && (
         <>
-          <EditMealPlanDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} plan={selectedPlan} />
+          <EditMealPlanDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            plan={selectedPlan}
+            onUpdated={async () => {
+              const res = await fetch("/api/meal-plans", { credentials: "include" })
+              const data = await res.json()
+              setMealsPlans(data.mealPlans || [])
+            }}
+          />
           <ViewMealPlanDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} plan={selectedPlan} />
         </>
       )}

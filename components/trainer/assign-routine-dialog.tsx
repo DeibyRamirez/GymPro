@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
-import { mockRoutines } from "@/lib/data"
 import { Calendar } from "lucide-react"
 
 interface AssignRoutineDialogProps {
@@ -25,6 +24,15 @@ interface AssignRoutineDialogProps {
 
 export function AssignRoutineDialog({ open, onOpenChange, clientName, onAssign }: AssignRoutineDialogProps) {
   const [selectedRoutine, setSelectedRoutine] = useState<string>("")
+  const [routines, setRoutines] = useState<any[]>([])
+
+  useEffect(() => {
+    if (!open) return
+
+    fetch('/api/routines?limit=100', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => setRoutines(data.routines || []))
+  }, [open])
 
   const handleAssign = () => {
     if (selectedRoutine) {
@@ -55,13 +63,13 @@ export function AssignRoutineDialog({ open, onOpenChange, clientName, onAssign }
         </DialogHeader>
 
         <RadioGroup value={selectedRoutine} onValueChange={setSelectedRoutine} className="space-y-3">
-          {mockRoutines.map((routine) => (
+          {routines.map((routine) => (
             <div
-              key={routine.id}
+              key={routine._id}
               className="flex items-start space-x-3 border rounded-lg p-4 hover:bg-accent/5 cursor-pointer"
             >
-              <RadioGroupItem value={routine.id} id={routine.id} className="mt-1" />
-              <Label htmlFor={routine.id} className="flex-1 cursor-pointer">
+              <RadioGroupItem value={routine._id} id={routine._id} className="mt-1" />
+              <Label htmlFor={routine._id} className="flex-1 cursor-pointer">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold">{routine.name}</h4>

@@ -17,6 +17,7 @@ import {
 
 interface UsersTableProps {
   users: any[]
+  onRefresh?: () => void
 }
 
 const roleIcons: Record<UserRole, typeof Shield> = {
@@ -37,7 +38,25 @@ const roleColors: Record<UserRole, string> = {
   client: "bg-accent/10 text-accent",
 }
 
-export function UsersTable({ users }: UsersTableProps) {
+export function UsersTable({ users, onRefresh }: UsersTableProps) {
+  const handleUpdateUser = async (userId: string, payload: Record<string, unknown>) => {
+    await fetch(`/api/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    })
+    onRefresh?.()
+  }
+
+  const handleDeactivate = async (userId: string) => {
+    await fetch(`/api/users/${userId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    onRefresh?.()
+  }
+
   return (
     <div className="rounded-lg border bg-card">
       <Table>
@@ -94,11 +113,10 @@ export function UsersTable({ users }: UsersTableProps) {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>Ver perfil</DropdownMenuItem>
-                      <DropdownMenuItem>Editar usuario</DropdownMenuItem>
-                      <DropdownMenuItem>Cambiar rol</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleUpdateUser(user.id, { role: 'trainer' })}>Cambiar a entrenador</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleUpdateUser(user.id, { role: 'client' })}>Cambiar a cliente</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive">Desactivar usuario</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => handleDeactivate(user.id)}>Desactivar usuario</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

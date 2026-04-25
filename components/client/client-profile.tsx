@@ -39,7 +39,7 @@ export function ClientProfile({ clientId, onUpdate }: ClientProfileProps) {
       setError("")
       
       try {
-        const response = await fetch("/api/users/profile")
+        const response = await fetch("/api/users/profile", { credentials: "include" })
         const data = await response.json()
 
         if (!response.ok) {
@@ -104,6 +104,7 @@ export function ClientProfile({ clientId, onUpdate }: ClientProfileProps) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           name,
           age: age || undefined,
