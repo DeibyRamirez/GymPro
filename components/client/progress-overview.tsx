@@ -9,16 +9,25 @@ interface ProgressOverviewProps {
   clientId: string
 }
 
+type ProfileData = {
+  weight?: number
+  goal?: 'perder_peso' | 'ganar_masa' | 'mantenimiento' | 'tonificar' | 'resistencia' | 'otro'
+}
+
+type CalendarEventItem = {
+  completed?: boolean
+}
+
 export function ProgressOverview({ clientId }: ProgressOverviewProps) {
   const [loading, setLoading] = useState(true)
-  const [userData, setUserData] = useState<any>(null)
+  const [userData, setUserData] = useState<ProfileData | null>(null)
   const [workoutsCount, setWorkoutsCount] = useState(0)
 
   useEffect(() => {
     const loadData = async () => {
       try {
         // Cargar datos del usuario
-        const profileResponse = await fetch("/api/users/profile")
+        const profileResponse = await fetch("/api/users/profile", { credentials: "include" })
         if (profileResponse.ok) {
           const profileData = await profileResponse.json()
           setUserData(profileData.user)
@@ -30,11 +39,12 @@ export function ProgressOverview({ clientId }: ProgressOverviewProps) {
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
         
         const calendarResponse = await fetch(
-          `/api/calendar?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}&type=workout`
+          `/api/calendar?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}&type=workout`,
+          { credentials: "include" }
         )
         if (calendarResponse.ok) {
           const calendarData = await calendarResponse.json()
-          const completedWorkouts = calendarData.events?.filter((e: any) => e.completed) || []
+          const completedWorkouts = (calendarData.events as CalendarEventItem[] | undefined)?.filter((e) => e.completed) || []
           setWorkoutsCount(completedWorkouts.length)
         }
       } catch (error) {

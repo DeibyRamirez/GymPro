@@ -14,7 +14,7 @@ async function verifyAuth(req: NextRequest) {
     throw new Error('Token no proporcionado');
   }
 
-  const decoded = jwt.verify(token, JWT_SECRET) as any;
+  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
   const user = await User.findById(decoded.userId);
 
   if (!user || !user.isActive) {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
     const user = await verifyAuth(req);
 
-    const userResponse: any = {
+    const userResponse: Record<string, unknown> = {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
@@ -51,10 +51,11 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ user: userResponse });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error obteniendo perfil:', error);
+    const message = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: 'Error al obtener perfil', details: error.message },
+      { error: 'Error al obtener perfil', details: message },
       { status: 500 }
     );
   }
@@ -81,7 +82,7 @@ export async function PUT(req: NextRequest) {
     } = body;
 
     // Preparar datos de actualización
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (name) updateData.name = name;
 
@@ -112,7 +113,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // Preparar respuesta
-    const userResponse: any = {
+    const userResponse: Record<string, unknown> = {
       id: updatedUser._id.toString(),
       name: updatedUser.name,
       email: updatedUser.email,
@@ -136,19 +137,21 @@ export async function PUT(req: NextRequest) {
       user: userResponse
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error actualizando perfil:', error);
 
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map((err: any) => err.message);
+    const validationError = error as { name?: string; errors?: Record<string, { message: string }> };
+    if (validationError.name === 'ValidationError' && validationError.errors) {
+      const errors = Object.values(validationError.errors).map((err) => err.message);
       return NextResponse.json(
         { error: 'Error de validación', details: errors },
         { status: 400 }
       );
     }
 
+    const message = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: 'Error al actualizar perfil', details: error.message },
+      { error: 'Error al actualizar perfil', details: message },
       { status: 500 }
     );
   }

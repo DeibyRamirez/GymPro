@@ -1,11 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, CheckCircle2, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CalendarEvent } from "@/lib/calendar-data"
 
 interface UpcomingEventsProps {
   events: CalendarEvent[]
+  onToggleComplete?: (eventId: string, completed: boolean) => void
+  onDelete?: (eventId: string) => void
 }
 
 const eventTypeConfig = {
@@ -31,7 +34,7 @@ const eventTypeConfig = {
   },
 }
 
-export function UpcomingEvents({ events }: UpcomingEventsProps) {
+export function UpcomingEvents({ events, onToggleComplete, onDelete }: UpcomingEventsProps) {
   const sortedEvents = [...events].sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 5)
 
   const formatDate = (date: Date) => {
@@ -93,6 +96,14 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
                     <Badge variant="secondary" className={cn("text-xs", config.color)}>
                       {config.label}
                     </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button size="sm" variant="outline" onClick={() => onToggleComplete?.(event.id, !event.completed)}>
+                      {event.completed ? 'Marcar pendiente' : 'Completar'}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete?.(event.id)}>
+                      Eliminar
+                    </Button>
                   </div>
                 </div>
               </div>

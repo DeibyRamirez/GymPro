@@ -77,10 +77,11 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creando administrador:', error);
+    const message = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: 'Error al crear administrador', details: error.message },
+      { error: 'Error al crear administrador', details: message },
       { status: 500 }
     );
   }

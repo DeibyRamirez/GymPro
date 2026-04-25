@@ -46,18 +46,6 @@ export function EditMealPlanDialog({
   );
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setName(plan.name);
-    setDescription(plan.description);
-    setTotalCalories(plan.calories.toString());
-    setMeals(
-      plan.meals.map((meal) => ({
-        ...meal,
-        foods: meal.foods.join(", "),
-      }))
-    );
-  }, [plan]);
-
   const addMeal = () => {
     setMeals([
       ...meals,
@@ -113,14 +101,13 @@ export function EditMealPlanDialog({
         return;
       }
 
-      const token = localStorage.getItem("auth-token");
       console.log("🧠 ID del plan que se intenta actualizar:", plan._id);
       const res = await fetch(`/api/meal-plans/${plan._id || plan.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
         },
+        credentials: "include",
         body: JSON.stringify(updatedPlan),
       });
 
@@ -133,9 +120,9 @@ export function EditMealPlanDialog({
       console.log("✅ Plan actualizado:", data);
       onOpenChange(false);
       onUpdated?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error de red o ejecución:", err);
-      alert(`Error de red o ejecución: ${err.message || err}`);
+      alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -153,12 +140,12 @@ export function EditMealPlanDialog({
         alert("Error: el plan no tiene ID válido.");
         return;
       }
-      const token = localStorage.getItem("auth-token");
       const res = await fetch(`/api/meal-plans/${plan._id || plan.id}`, {
         method: "DELETE",
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
         },
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -169,9 +156,9 @@ export function EditMealPlanDialog({
       console.log("🗑️ Plan eliminado correctamente");
       onOpenChange(false);
       onUpdated?.();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Error de red o ejecución:", err);
-      alert(`Error de red o ejecución: ${err.message || err}`);
+      alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }

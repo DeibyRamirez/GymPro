@@ -1,12 +1,12 @@
 "use client"
 
-import { JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, UtensilsCrossed, Flame, Apple, Edit, Trash2, Eye, Copy } from "lucide-react"
-import { mockMealPlans, type MealPlan } from "@/lib/data"
+import type { MealPlan } from "@/lib/data"
 import { CreateMealPlanDialog } from "./create-meal-plan-dialog"
 import { EditMealPlanDialog } from "./edit-meal-plan-dialog"
 import { ViewMealPlanDialog } from "./view-meal-plan-dialog"
@@ -51,18 +51,15 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
 
         const res = await fetch("/api/meal-plans", {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("auth-token")}`
-          }
+          credentials: "include"
         })
         if (!res.ok) throw new Error("Error al obtener planes alimenticios")
 
         const data = await res.json()
         setMealsPlans(data.mealPlans)
       }
-      catch (err: any) {
-        setError(err.message)
+      catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Error desconocido")
       }
       finally {
         setLoading(false)
@@ -95,7 +92,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredPlans.map((plan: any) => (
+        {filteredPlans.map((plan) => (
           <Card
             key={plan._id}
             className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-accent/50"
@@ -132,7 +129,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Comidas incluidas:</p>
                 <div className="flex flex-wrap gap-1">
-                  {plan.meals.map((meal: { id: Key | null | undefined; name: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined }) => (
+                  {plan.meals.map((meal) => (
                     <Badge key={meal.id} variant="outline" className="text-xs">
                       {meal.name}
                     </Badge>
@@ -177,10 +174,28 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
       </div>
 
       {/* Diálogos */}
-      <CreateMealPlanDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <CreateMealPlanDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSuccess={async () => {
+          const res = await fetch("/api/meal-plans", { credentials: "include" })
+          const data = await res.json()
+          setMealsPlans(data.mealPlans || [])
+        }}
+      />
       {selectedPlan && (
         <>
-          <EditMealPlanDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} plan={selectedPlan} />
+          <EditMealPlanDialog
+            key={selectedPlan._id}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            plan={selectedPlan}
+            onUpdated={async () => {
+              const res = await fetch("/api/meal-plans", { credentials: "include" })
+              const data = await res.json()
+              setMealsPlans(data.mealPlans || [])
+            }}
+          />
           <ViewMealPlanDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} plan={selectedPlan} />
         </>
       )}

@@ -15,7 +15,7 @@ async function verifyAuth(req: NextRequest) {
     throw new Error('Token no proporcionado');
   }
 
-  const decoded = jwt.verify(token, JWT_SECRET) as any;
+  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
   const user = await User.findById(decoded.userId);
 
   if (!user || !user.isActive) {
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     const muscleGroup = searchParams.get('muscleGroup') || '';
 
     // Construir filtros
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
 
     if (search) {
       filters.name = { $regex: search, $options: 'i' };
@@ -129,11 +129,12 @@ export async function POST(req: NextRequest) {
       exercise: createdExercise
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creando ejercicio:', error);
 
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map((err: any) => err.message);
+    const validationError = error as { name?: string; errors?: Record<string, { message: string }> };
+    if (validationError.name === 'ValidationError' && validationError.errors) {
+      const errors = Object.values(validationError.errors).map((err) => err.message);
       return NextResponse.json(
         { error: 'Error de validación', details: errors },
         { status: 400 }

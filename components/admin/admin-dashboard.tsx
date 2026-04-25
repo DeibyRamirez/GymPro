@@ -3,31 +3,35 @@
 import { StatsCard } from "./stats-card"
 import { UsersTable } from "./users-table"
 import { ActivityFeed } from "./activity-feed"
-import { Users, Dumbbell, TrendingUp } from "lucide-react"
-import { mockUsers } from "@/lib/auth"
+import { Users, Dumbbell } from "lucide-react"
 import { useEffect, useState } from "react"
+import type { User } from "@/lib/auth"
+
+type DashboardStats = {
+  totalUsers?: number
+  totalTrainers?: number
+  totalClients?: number
+  recentUsers?: User[]
+}
 
 export function AdminDashboard() {
-  const totalUsers = mockUsers.length
-  const trainers = mockUsers.filter((u) => u.role === "trainer").length
-  const clients = mockUsers.filter((u) => u.role === "client").length
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [users, setUsers] = useState<User[]>([])
   
     useEffect(() => {
       async function fetchDashboardAdmin() {
         try {
           const res = await fetch("/api/dashboard/stats", {
             method: "GET",
-            headers: {
-              "Authorization": `Bearer ${localStorage.getItem("auth-token")}`,
-            },
+            credentials: "include",
           });
   
           const data = await res.json();
           setStats(data.stats);
+          setUsers(data.stats?.recentUsers || [])
         }
-        catch (err) {
+        catch (err: unknown) {
           console.log("Error al obtener dashboard", err);
         }
         finally {
@@ -85,7 +89,15 @@ export function AdminDashboard() {
               <h3 className="text-xl font-semibold">Gestión de Usuarios</h3>
               <p className="text-sm text-muted-foreground mt-1">Administra roles y permisos de usuarios</p>
             </div>
-            <UsersTable users={mockUsers} />
+            <UsersTable
+              users={users}
+              onRefresh={async () => {
+                const res = await fetch("/api/dashboard/stats", { credentials: "include" })
+                const data = await res.json()
+                setStats(data.stats)
+                setUsers(data.stats?.recentUsers || [])
+              }}
+            />
           </div>
         </div>
         <div>

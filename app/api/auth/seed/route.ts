@@ -8,7 +8,7 @@ import Assignment from '@/lib/models/Assignment';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 
 // Solo permitir en desarrollo
-export async function POST(req: NextRequest) {
+export async function POST() {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json(
       { error: 'Solo disponible en desarrollo' },
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     console.log('👥 Usuarios creados');
 
     // Obtener IDs de usuarios
-    const admin = createdUsers.find(user => user.role === 'admin');
+    createdUsers.find(user => user.role === 'admin');
     const trainer1 = createdUsers.find(user => user.email === 'carlos@fitpro.com');
     const trainer2 = createdUsers.find(user => user.email === 'maria@fitpro.com');
 

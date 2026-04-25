@@ -7,6 +7,18 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+type JwtPayload = { userId: string }
+type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }>; message?: string }
+type ExerciseInput = {
+  name: string
+  sets: string | number
+  reps: string
+  rest: string
+  instructions: string
+  image?: string
+  muscleGroups?: string[]
+}
+
 // Middleware para verificar autenticación
 async function verifyAuth(req: NextRequest) {
   const token = req.cookies.get('auth-token')?.value ||
@@ -16,7 +28,7 @@ async function verifyAuth(req: NextRequest) {
     throw new Error('Token no proporcionado');
   }
 
-  const decoded = jwt.verify(token, JWT_SECRET) as any;
+  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
   const user = await User.findById(decoded.userId);
 
   if (!user || !user.isActive) {
@@ -39,7 +51,7 @@ export async function GET(req: NextRequest) {
     const difficulty = searchParams.get('difficulty') || '';
 
     // Construir filtros
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
 
     // Solo admins y trainers pueden ver todas las rutinas
     if (user.role === 'client') {
@@ -89,7 +101,7 @@ export async function GET(req: NextRequest) {
           _id: routine.createdBy._id.toString(),
         }
         : routine.createdBy,
-      exercises: routine.exercises.map((ex: any) => ({
+      exercises: routine.exercises.map((ex) => ({
         ...ex.toObject(),
         _id: ex._id?.toString(),
         exercise: ex.exercise?._id?.toString
@@ -141,7 +153,7 @@ export async function POST(req: NextRequest) {
 
     // Procesar cada ejercicio: buscar o crear
     const processedExercises = await Promise.all(
-      rawExercises.map(async (ex: any, index: number) => {
+      rawExercises.map(async (ex: ExerciseInput, index: number) => {
         const { name: exName, sets, reps, rest, instructions, image } = ex;
 
         if (!exName || !sets || !reps || !rest || !instructions) {
@@ -216,18 +228,19 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as ValidationErrorLike;
     console.error('Error creando rutina:', error);
 
-    if (error.message.includes('ejercicio')) {
+    if (err.message?.includes('ejercicio')) {
       return NextResponse.json(
-        { error: error.message },
+        { error: err.message },
         { status: 400 }
       );
     }
 
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map((err: any) => err.message);
+    if (err.name === 'ValidationError' && err.errors) {
+      const errors = Object.values(err.errors).map((item) => item.message);
       return NextResponse.json(
         { error: 'Error de validación', details: errors },
         { status: 400 }

@@ -140,10 +140,11 @@ export async function POST(req: NextRequest) {
 
     return response;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('Error en login:', error);
     return NextResponse.json(
-      { error: 'Error al iniciar sesión', details: error.message },
+      { error: 'Error al iniciar sesión', details: message },
       { status: 500 }
     );
   }

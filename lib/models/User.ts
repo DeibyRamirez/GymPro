@@ -1,6 +1,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+type PlainUser = {
+  _id?: unknown
+  __v?: unknown
+  password?: unknown
+}
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -125,15 +131,16 @@ const UserSchema = new Schema<IUser>({
   }
 }, {
   timestamps: true,
-  toJSON: {
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete (ret as any)._id;
-      delete (ret as any).__v;
-      delete (ret as any).password; // Nunca devolver la contraseña
-      return ret;
+    toJSON: {
+      transform: function(doc, ret) {
+        ret.id = ret._id;
+        const plain = ret as PlainUser;
+        delete plain._id;
+        delete plain.__v;
+        delete plain.password; // Nunca devolver la contraseña
+        return ret;
+      }
     }
-  }
 });
 
 // Hash de contraseña antes de guardar
@@ -147,7 +154,7 @@ UserSchema.pre('save', async function(next) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
-  } catch (error: any) {
+  } catch (error: unknown) {
     next(error);
   }
 });
@@ -158,7 +165,7 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
 };
 
 // Índices
-UserSchema.index({ email: 1 }, { unique: true });
+
 UserSchema.index({ role: 1 });
 UserSchema.index({ trainerId: 1 });
 UserSchema.index({ isActive: 1 });

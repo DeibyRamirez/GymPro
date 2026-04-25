@@ -9,6 +9,8 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+type JwtPayload = { userId: string }
+
 // Middleware para verificar autenticación
 async function verifyAuth(req: NextRequest) {
   const token = req.cookies.get('auth-token')?.value || 
@@ -18,7 +20,7 @@ async function verifyAuth(req: NextRequest) {
     throw new Error('Token no proporcionado');
   }
 
-  const decoded = jwt.verify(token, JWT_SECRET) as any;
+  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
   const user = await User.findById(decoded.userId);
 
   if (!user || !user.isActive) {
@@ -34,7 +36,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
     const user = await verifyAuth(req);
 
-    let stats: any = {};
+    let stats: Record<string, unknown> = {};
 
     if (user.role === 'admin') {
       // Estadísticas para administradores

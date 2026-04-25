@@ -169,8 +169,8 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
       if (onSuccess) {
         onSuccess()
       }
-    } catch (err: any) {
-      setError(err.message || "Error al crear la rutina")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error al crear la rutina")
     } finally {
       setLoading(false)
     }

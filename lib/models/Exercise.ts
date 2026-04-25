@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+type PlainDoc = { _id?: unknown; __v?: unknown }
+
 export interface IExercise extends Document {
   name: string;
   sets: number;
@@ -70,14 +72,15 @@ const ExerciseSchema = new Schema<IExercise>({
   }
 }, {
   timestamps: true,
-  toJSON: {
-    transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete (ret as any)._id;
-      delete (ret as any).__v;
-      return ret;
+    toJSON: {
+      transform: function(doc, ret) {
+        ret.id = ret._id;
+        const plain = ret as PlainDoc;
+        delete plain._id;
+        delete plain.__v;
+        return ret;
+      }
     }
-  }
 });
 
 // Índices

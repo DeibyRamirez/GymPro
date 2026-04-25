@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 interface CreateMealPlanDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
 interface MealForm {
@@ -30,7 +31,7 @@ interface MealForm {
   calories: string
 }
 
-export function CreateMealPlanDialog({ open, onOpenChange }: CreateMealPlanDialogProps) {
+export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMealPlanDialogProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [totalCalories, setTotalCalories] = useState("")
@@ -90,6 +91,7 @@ export function CreateMealPlanDialog({ open, onOpenChange }: CreateMealPlanDialo
       const response = await fetch("/api/meal-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       })
 
@@ -103,9 +105,10 @@ export function CreateMealPlanDialog({ open, onOpenChange }: CreateMealPlanDialo
       setDescription("")
       setTotalCalories("")
       setMeals([{ id: "1", name: "", time: "", foods: "", calories: "" }])
+      if (onSuccess) onSuccess()
       // window.location.reload()
-    } catch (err: any) {
-      alert(err.message || "Error al crear el plan")
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Error al crear el plan")
     }
   }
 

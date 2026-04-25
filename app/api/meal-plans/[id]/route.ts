@@ -14,7 +14,7 @@ async function verifyAuth(req: NextRequest) {
 
   if (!token) throw new Error("Token no proporcionado");
 
-  const decoded = jwt.verify(token, JWT_SECRET) as any;
+  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
   const user = await User.findById(decoded.userId);
 
   if (!user || !user.isActive) {

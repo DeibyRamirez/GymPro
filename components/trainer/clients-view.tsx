@@ -1,13 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ClientCard } from "./client-card"
 import { AssignRoutineDialog } from "./assign-routine-dialog"
 import { AssignMealPlanDialog } from "./assign-meal-plan-dialog"
 import { Input } from "@/components/ui/input"
 import { Search, Users, Filter } from "lucide-react"
-import { getTrainerClients } from "@/lib/auth"
-import { mockAssignments } from "@/lib/data"
 import type { User } from "@/lib/auth"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -21,8 +19,31 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
   const [selectedClient, setSelectedClient] = useState<User | null>(null)
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false)
   const [mealPlanDialogOpen, setMealPlanDialogOpen] = useState(false)
+  const [clients, setClients] = useState<User[]>([])
+  const [assignments, setAssignments] = useState<Array<{ clientId?: { _id?: string; id?: string } | string }>>([])
 
-  const clients = getTrainerClients(trainerId)
+  useEffect(() => {
+    const load = async () => {
+      const [clientsRes, assignmentsRes] = await Promise.all([
+        fetch(`/api/users?role=client&trainerId=${trainerId}`, { credentials: 'include' }),
+        fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: 'include' }),
+      ])
+
+      const clientsData = await clientsRes.json()
+      const assignmentsData = await assignmentsRes.json()
+
+      setClients(clientsData.users || [])
+      setAssignments(assignmentsData.assignments || [])
+    }
+
+    load()
+  }, [trainerId])
+
+  const refreshAssignments = async () => {
+    const assignmentsRes = await fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: 'include' })
+    const assignmentsData = await assignmentsRes.json()
+    setAssignments(assignmentsData.assignments || [])
+  }
 
   const filteredClients = clients.filter((client) => {
     const matchesSearch =
@@ -31,7 +52,7 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
 
     if (filterStatus === "all") return matchesSearch
 
-    const assignment = mockAssignments.find((a) => a.clientId === client.id)
+    const assignment = assignments.find((a) => a.clientId?._id === client.id || a.clientId?.id === client.id || a.clientId === client.id)
     if (filterStatus === "active") return matchesSearch && assignment
     if (filterStatus === "inactive") return matchesSearch && !assignment
 
@@ -48,16 +69,44 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
     setMealPlanDialogOpen(true)
   }
 
-  const handleRoutineAssigned = (routineId: string) => {
-    console.log(`Rutina ${routineId} asignada a cliente ${selectedClient?.id}`)
+  const handleRoutineAssigned = async (routineId: string) => {
+    if (!selectedClient) return
+
+    await fetch('/api/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        clientId: selectedClient.id,
+        trainerId,
+        routineId,
+        startDate: new Date().toISOString(),
+      }),
+    })
+
+    await refreshAssignments()
   }
 
-  const handleMealPlanAssigned = (mealPlanId: string) => {
-    console.log(`Plan ${mealPlanId} asignado a cliente ${selectedClient?.id}`)
+  const handleMealPlanAssigned = async (mealPlanId: string) => {
+    if (!selectedClient) return
+
+    await fetch('/api/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        clientId: selectedClient.id,
+        trainerId,
+        mealPlanId,
+        startDate: new Date().toISOString(),
+      }),
+    })
+
+    await refreshAssignments()
   }
 
   const getClientAssignment = (clientId: string) => {
-    return mockAssignments.find((a) => a.clientId === clientId)
+    return assignments.find((a) => a.clientId?._id === clientId || a.clientId?.id === clientId || a.clientId === clientId)
   }
 
   return (

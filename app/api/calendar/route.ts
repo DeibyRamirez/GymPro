@@ -6,6 +6,9 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+type JwtPayload = { userId: string }
+type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }> }
+
 // Middleware para verificar autenticación
 async function verifyAuth(req: NextRequest) {
   const token = req.cookies.get('auth-token')?.value || 
@@ -15,7 +18,7 @@ async function verifyAuth(req: NextRequest) {
     throw new Error('Token no proporcionado');
   }
 
-  const decoded = jwt.verify(token, JWT_SECRET) as any;
+  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
   const user = await User.findById(decoded.userId);
 
   if (!user || !user.isActive) {
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
     const completed = searchParams.get('completed');
 
     // Construir filtros
-    const filters: any = {};
+    const filters: Record<string, unknown> = {};
 
     // Los usuarios solo ven sus propios eventos
     if (user.role === 'trainer') {
@@ -176,11 +179,12 @@ export async function POST(req: NextRequest) {
       event: createdEvent
     }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creando evento:', error);
 
-    if ((error as any).name === 'ValidationError') {
-      const errors = Object.values((error as any).errors).map((err: any) => err.message);
+    const validationError = error as ValidationErrorLike;
+    if (validationError.name === 'ValidationError' && validationError.errors) {
+      const errors = Object.values(validationError.errors).map((err) => err.message);
       return NextResponse.json(
         { error: 'Error de validación', details: errors },
         { status: 400 }

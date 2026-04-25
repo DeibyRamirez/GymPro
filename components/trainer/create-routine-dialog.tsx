@@ -17,15 +17,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card"
 import { Plus, Trash2, ImageIcon } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { set } from "mongoose"
 
 interface CreateRoutineDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
 interface ExerciseForm {
-  [x: string]: any
   id: string
   name: string
   sets: string
@@ -33,9 +32,10 @@ interface ExerciseForm {
   rest: string
   instructions: string
   image: string
+  muscleGroups?: string[]
 }
 
-export function CreateRoutineDialog({ open, onOpenChange }: CreateRoutineDialogProps) {
+export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRoutineDialogProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [duration, setDuration] = useState("")
@@ -110,6 +110,7 @@ export function CreateRoutineDialog({ open, onOpenChange }: CreateRoutineDialogP
     };
 
     try {
+      // Se crean primero los ejercicios para obtener IDs válidos de MongoDB.
       const response = await fetch("/api/routines", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,9 +124,10 @@ export function CreateRoutineDialog({ open, onOpenChange }: CreateRoutineDialogP
       }
 
       onOpenChange(false);
+      if (onSuccess) onSuccess();
       // window.location.reload();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   };
 
