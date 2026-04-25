@@ -31,6 +31,7 @@ export function GroupClassesPanel({ trainerId }: { trainerId: string }) {
     setClasses(classesData.events || [])
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [trainerId])
 
   const createClass = async () => {

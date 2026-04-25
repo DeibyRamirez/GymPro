@@ -30,6 +30,7 @@ export function InventoryPosPanel() {
     setClients(cData.users || [])
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [])
 
   const handleSale = async () => {
