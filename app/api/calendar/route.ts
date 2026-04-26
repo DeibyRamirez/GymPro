@@ -57,6 +57,10 @@ export async function GET(req: NextRequest) {
       filters.userId = user._id;
     }
 
+    if (user.gymId) {
+      filters.gymId = user.gymId;
+    }
+
     // Filtros de fecha
     if (startDate && endDate) {
       filters.date = {
@@ -159,6 +163,7 @@ export async function POST(req: NextRequest) {
       date: new Date(date),
       type,
       userId: eventUserId,
+      gymId: user.gymId || null,
       trainerId: trainerId || (user.role === 'trainer' ? user._id : null),
       routineId: routineId || null,
       mealPlanId: mealPlanId || null,

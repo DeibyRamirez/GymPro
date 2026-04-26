@@ -19,6 +19,15 @@ type ExerciseInput = {
   muscleGroups?: string[]
 }
 
+type RoutineExerciseLike = {
+  _id?: { toString: () => string }
+  toObject: () => Record<string, unknown>
+  exercise?: {
+    _id?: { toString: () => string }
+    toObject?: () => Record<string, unknown>
+  } | null
+}
+
 // Middleware para verificar autenticación
 async function verifyAuth(req: NextRequest) {
   const token = req.cookies.get('auth-token')?.value ||
@@ -52,6 +61,9 @@ export async function GET(req: NextRequest) {
 
     // Construir filtros
     const filters: Record<string, unknown> = {};
+    if (user.gymId) {
+      filters.gymId = user.gymId;
+    }
 
     // Solo admins y trainers pueden ver todas las rutinas
     if (user.role === 'client') {
@@ -80,7 +92,8 @@ export async function GET(req: NextRequest) {
     filters.isActive = true;
 
     const skip = (page - 1) * limit;
-
+    
+    // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios
     const [routines, total] = await Promise.all([
       Routine.find(filters)
         .populate('createdBy', 'name email')
@@ -101,19 +114,19 @@ export async function GET(req: NextRequest) {
           _id: routine.createdBy._id.toString(),
         }
         : routine.createdBy,
-      exercises: routine.exercises.map((ex) => ({
+      exercises: routine.exercises.map((ex: RoutineExerciseLike) => ({
         ...ex.toObject(),
         _id: ex._id?.toString(),
         exercise: ex.exercise?._id?.toString
           ? {
-            ...ex.exercise.toObject(),
-            _id: ex.exercise._id.toString(),
+            ...(ex.exercise?.toObject ? ex.exercise.toObject() : {}),
+            _id: ex.exercise?._id?.toString(),
           }
           : ex.exercise,
       })),
     }));
 
-
+    // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios
     return NextResponse.json({
       routines: formattedRoutines,
       pagination: {
@@ -162,7 +175,7 @@ export async function POST(req: NextRequest) {
 
         // Convertir sets a número (si es rango como "8-12", toma el primero)
         const setsNumber = (() => {
-          const num = parseInt(sets);
+          const num = typeof sets === 'number' ? sets : parseInt(sets, 10);
           return isNaN(num) ? 3 : num; // default 3 si no es número
         })();
 
@@ -211,6 +224,7 @@ export async function POST(req: NextRequest) {
       exercises: processedExercises,
       tags: tags || [],
       createdBy: user._id
+      ,gymId: user.gymId || null
     });
 
     await routine.save();

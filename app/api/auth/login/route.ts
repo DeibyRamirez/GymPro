@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
+import Gym from '@/lib/models/Gym';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
-    const { email, password } = body;
+    const { email, password, gymSlug } = body;
 
     // =====================================
     // 🚀 INGRESO DE ADMIN FORZADO
@@ -78,8 +79,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const gym = gymSlug ? await Gym.findOne({ slug: String(gymSlug).toLowerCase() }) : null;
+    if (gymSlug && !gym) {
+      return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });
+    }
+
     // Buscar usuario e incluir la contraseña para comparación
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      ...(gym ? { gymId: gym._id } : {}),
+    }).select('+password');
 
     if (!user) {
       return NextResponse.json(
@@ -119,7 +128,10 @@ export async function POST(req: NextRequest) {
       email: user.email,
       role: user.role,
       avatar: user.avatar,
-      trainerId: user.trainerId?.toString()
+      trainerId: user.trainerId?.toString(),
+      gymId: user.gymId?.toString(),
+      gymSlug: gym?.slug || null,
+      gymName: gym?.name || null,
     };
 
     const response = NextResponse.json(

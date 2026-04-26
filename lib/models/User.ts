@@ -13,6 +13,7 @@ export interface IUser extends Document {
   password: string;
   role: 'superadmin' | 'admin' | 'trainer' | 'client';
   avatar?: string;
+  gymId?: mongoose.Types.ObjectId | null;
   trainerId?: mongoose.Types.ObjectId; // Para clientes, ID del entrenador asignado
   isActive: boolean;
   // Campos de información del gimnasio
@@ -62,6 +63,11 @@ const UserSchema = new Schema<IUser>({
   avatar: {
     type: String,
     default: '/placeholder-user.jpg'
+  },
+  gymId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Gym',
+    default: null,
   },
   trainerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -166,6 +172,7 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
 
 // Índices
 
+UserSchema.index({ gymId: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ trainerId: 1 });
 UserSchema.index({ isActive: 1 });

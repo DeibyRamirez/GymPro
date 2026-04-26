@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IAssignment extends Document {
   clientId: mongoose.Types.ObjectId;
   trainerId: mongoose.Types.ObjectId;
+  gymId?: mongoose.Types.ObjectId | null;
   routineId?: mongoose.Types.ObjectId;
   mealPlanId?: mongoose.Types.ObjectId;
   durationWeeks?: number;
@@ -43,6 +44,11 @@ const AssignmentSchema = new Schema<IAssignment>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'El entrenador es requerido']
+  },
+  gymId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Gym',
+    default: null
   },
   routineId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -179,6 +185,7 @@ AssignmentSchema.pre('save', function(next) {
 // Índices
 AssignmentSchema.index({ clientId: 1 });
 AssignmentSchema.index({ trainerId: 1 });
+AssignmentSchema.index({ gymId: 1 });
 AssignmentSchema.index({ status: 1 });
 AssignmentSchema.index({ startDate: 1 });
 AssignmentSchema.index({ endDate: 1 });

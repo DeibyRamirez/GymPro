@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
+import Gym from '@/lib/models/Gym';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secret-key-cambiar-en-produccion';
@@ -15,6 +16,7 @@ export async function POST(req: NextRequest) {
       email, 
       password, 
       role, 
+      gymSlug,
       trainerId,
       // Campos de información del gimnasio
       age,
@@ -28,11 +30,16 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Validaciones
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !gymSlug) {
       return NextResponse.json(
-        { error: 'Nombre, correo electrónico y contraseña son requeridos' },
+        { error: 'Nombre, correo electrónico, contraseña y gimnasio son requeridos' },
         { status: 400 }
       );
+    }
+
+    const gym = await Gym.findOne({ slug: String(gymSlug).toLowerCase() });
+    if (!gym) {
+      return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });
     }
 
     if (password.length < 6) {
@@ -43,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar si el usuario ya existe
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: email.toLowerCase(), gymId: gym._id });
     if (existingUser) {
       return NextResponse.json(
         { error: 'Este correo electrónico ya está registrado' },
@@ -80,6 +87,7 @@ export async function POST(req: NextRequest) {
       email: email.toLowerCase(),
       password,
       role: userRole,
+      gymId: gym._id,
       trainerId: userRole === 'client' && trainerId ? trainerId : undefined
     };
 
@@ -114,6 +122,7 @@ export async function POST(req: NextRequest) {
       role: newUser.role,
       avatar: newUser.avatar,
       trainerId: newUser.trainerId?.toString()
+      ,gymId: newUser.gymId?.toString()
     };
 
     // Incluir campos de información del gimnasio en la respuesta si existen

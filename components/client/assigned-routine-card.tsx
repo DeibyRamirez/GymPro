@@ -4,10 +4,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dumbbell, Clock, ChevronRight } from "lucide-react"
-import type { Routine } from "@/lib/data"
+
+type RoutineExercise = {
+  _id?: string
+  exercise: {
+    _id: string
+    name: string
+    image?: string
+    instructions?: string
+  }
+  sets: number
+  reps: string
+  rest: string
+  instructions: string
+}
+
+type AssignedRoutine = {
+  name: string
+  description: string
+  duration: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  exercises: RoutineExercise[]
+}
 
 interface AssignedRoutineCardProps {
-  routine: Routine
+  routine: AssignedRoutine
   onViewDetails: () => void
 }
 

@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
     let stats: Record<string, unknown> = {};
 
     if (user.role === 'admin' || user.role === 'superadmin') {
+      const gymFilter = user.gymId ? { gymId: user.gymId } : { gymId: null };
       // Estadísticas para administradores
       const [
         totalUsers,
@@ -49,13 +50,13 @@ export async function GET(req: NextRequest) {
         totalAssignments,
         recentUsers
       ] = await Promise.all([
-        User.countDocuments({ isActive: true }),
-        User.countDocuments({ role: 'trainer', isActive: true }),
-        User.countDocuments({ role: 'client', isActive: true }),
-        Routine.countDocuments({ isActive: true }),
-        MealPlan.countDocuments({ isActive: true }),
-        Assignment.countDocuments({ status: 'active' }),
-        User.find({ isActive: true })
+        User.countDocuments({ ...gymFilter, isActive: true }),
+        User.countDocuments({ ...gymFilter, role: 'trainer', isActive: true }),
+        User.countDocuments({ ...gymFilter, role: 'client', isActive: true }),
+        Routine.countDocuments({ ...gymFilter, isActive: true }),
+        MealPlan.countDocuments({ ...gymFilter, isActive: true }),
+        Assignment.countDocuments({ ...gymFilter, status: 'active' }),
+        User.find({ ...gymFilter, isActive: true })
           .sort({ createdAt: -1 })
           .limit(5)
           .select('name email role createdAt')
@@ -69,11 +70,12 @@ export async function GET(req: NextRequest) {
         totalMealPlans,
         totalAssignments,
         recentUsers,
-        userGrowth: await getUserGrowthData(),
-        activeAssignments: await getActiveAssignmentsData()
+        userGrowth: await getUserGrowthData(user.gymId ? user.gymId.toString() : null),
+        activeAssignments: await getActiveAssignmentsData(user.gymId ? user.gymId.toString() : null)
       };
 
     } else if (user.role === 'trainer') {
+      const gymFilter = user.gymId ? { gymId: user.gymId } : { gymId: null };
       // Estadísticas para entrenadores
       const [
         myClients,
@@ -82,11 +84,12 @@ export async function GET(req: NextRequest) {
         myAssignments,
         recentEvents
       ] = await Promise.all([
-        User.countDocuments({ trainerId: user._id, isActive: true }),
-        Routine.countDocuments({ createdBy: user._id, isActive: true }),
-        MealPlan.countDocuments({ createdBy: user._id, isActive: true }),
-        Assignment.countDocuments({ trainerId: user._id, status: 'active' }),
+        User.countDocuments({ ...gymFilter, trainerId: user._id, isActive: true }),
+        Routine.countDocuments({ ...gymFilter, createdBy: user._id, isActive: true }),
+        MealPlan.countDocuments({ ...gymFilter, createdBy: user._id, isActive: true }),
+        Assignment.countDocuments({ ...gymFilter, trainerId: user._id, status: 'active' }),
         CalendarEvent.find({
+          ...gymFilter,
           $or: [{ userId: user._id }, { trainerId: user._id }]
         })
           .sort({ date: -1 })
@@ -94,7 +97,7 @@ export async function GET(req: NextRequest) {
           .populate('userId', 'name')
       ]);
 
-      const clientsList = await User.find({ trainerId: user._id, isActive: true })
+      const clientsList = await User.find({ ...gymFilter, trainerId: user._id, isActive: true })
         .select('name email createdAt')
         .sort({ createdAt: -1 })
         .limit(10);
@@ -106,10 +109,11 @@ export async function GET(req: NextRequest) {
         myAssignments,
         recentEvents,
         clientsList,
-        clientProgress: await getClientProgressData(user._id)
+        clientProgress: await getClientProgressData(user._id, user.gymId ? user.gymId.toString() : null)
       };
 
     } else {
+      const gymFilter = user.gymId ? { gymId: user.gymId } : { gymId: null };
       // Estadísticas para clientes
       const [
         myAssignments,
@@ -118,23 +122,25 @@ export async function GET(req: NextRequest) {
         totalEvents,
         trainer
       ] = await Promise.all([
-        Assignment.find({ clientId: user._id })
+        Assignment.find({ ...gymFilter, clientId: user._id })
           .populate('routineId', 'name description')
           .populate('mealPlanId', 'name description')
           .populate('trainerId', 'name email'),
         CalendarEvent.countDocuments({ 
+          ...gymFilter,
           userId: user._id, 
           completed: true,
           date: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) }
         }),
         CalendarEvent.find({
+          ...gymFilter,
           userId: user._id,
           completed: false,
           date: { $gte: new Date() }
         })
           .sort({ date: 1 })
           .limit(5),
-        CalendarEvent.countDocuments({ userId: user._id }),
+        CalendarEvent.countDocuments({ ...gymFilter, userId: user._id }),
         user.trainerId ? User.findById(user.trainerId).select('name email') : null
       ]);
 
@@ -144,8 +150,8 @@ export async function GET(req: NextRequest) {
         upcomingEvents,
         totalEvents,
         trainer,
-        weeklyProgress: await getWeeklyProgressData(user._id),
-        monthlyStats: await getMonthlyStatsData(user._id)
+        weeklyProgress: await getWeeklyProgressData(user._id, user.gymId ? user.gymId.toString() : null),
+        monthlyStats: await getMonthlyStatsData(user._id, user.gymId ? user.gymId.toString() : null)
       };
     }
 
@@ -161,17 +167,20 @@ export async function GET(req: NextRequest) {
 }
 
 // Función auxiliar para obtener datos de crecimiento de usuarios
-async function getUserGrowthData() {
+async function getUserGrowthData(gymId: string | null) {
   const now = new Date();
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const gymFilter = gymId ? { gymId } : { gymId: null };
 
   const [lastMonthUsers, thisMonthUsers] = await Promise.all([
     User.countDocuments({
+      ...gymFilter,
       createdAt: { $gte: lastMonth, $lt: thisMonth },
       isActive: true
     }),
     User.countDocuments({
+      ...gymFilter,
       createdAt: { $gte: thisMonth },
       isActive: true
     })
@@ -185,9 +194,10 @@ async function getUserGrowthData() {
 }
 
 // Función auxiliar para obtener datos de asignaciones activas
-async function getActiveAssignmentsData() {
+async function getActiveAssignmentsData(gymId: string | null) {
+  const gymFilter = gymId ? { gymId } : { gymId: null };
   const assignments = await Assignment.aggregate([
-    { $match: { status: 'active' } },
+    { $match: { ...gymFilter, status: 'active' } },
     { $group: { _id: '$status', count: { $sum: 1 } } }
   ]);
 
@@ -195,7 +205,8 @@ async function getActiveAssignmentsData() {
 }
 
 // Función auxiliar para obtener progreso de clientes
-async function getClientProgressData(trainerId: string) {
+async function getClientProgressData(trainerId: string, gymId: string | null) {
+  const gymFilter = gymId ? { 'client.gymId': gymId } : {};
   const clientsProgress = await Assignment.aggregate([
     { $match: { trainerId: trainerId, status: 'active' } },
     {
@@ -208,26 +219,37 @@ async function getClientProgressData(trainerId: string) {
     },
     { $unwind: '$client' },
     {
+      $lookup: {
+        from: 'bodymeasurements',
+        localField: 'client._id',
+        foreignField: 'userId',
+        as: 'measurements'
+      }
+    },
+    {
       $project: {
         clientName: '$client.name',
         clientEmail: '$client.email',
-        progressCount: { $size: '$progress' },
-        lastProgress: { $arrayElemAt: ['$progress', -1] }
+        progressCount: { $size: '$measurements' },
+        latestMeasurement: { $arrayElemAt: ['$measurements', -1] }
       }
-    }
+    },
+    ...(Object.keys(gymFilter).length ? [{ $match: gymFilter }] : [])
   ]);
 
   return clientsProgress;
 }
 
 // Función auxiliar para obtener progreso semanal del cliente
-async function getWeeklyProgressData(userId: string) {
+async function getWeeklyProgressData(userId: string, gymId: string | null) {
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const gymFilter = gymId ? { gymId } : { gymId: null };
 
   const events = await CalendarEvent.aggregate([
     {
       $match: {
+        ...gymFilter,
         userId: userId,
         date: { $gte: oneWeekAgo }
       }
@@ -247,17 +269,20 @@ async function getWeeklyProgressData(userId: string) {
 }
 
 // Función auxiliar para obtener estadísticas mensuales del cliente
-async function getMonthlyStatsData(userId: string) {
+async function getMonthlyStatsData(userId: string, gymId: string | null) {
   const oneMonthAgo = new Date();
   oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+  const gymFilter = gymId ? { gymId } : { gymId: null };
 
   const [workoutEvents, mealEvents, completionRate] = await Promise.all([
     CalendarEvent.countDocuments({
+      ...gymFilter,
       userId: userId,
       type: 'workout',
       date: { $gte: oneMonthAgo }
     }),
     CalendarEvent.countDocuments({
+      ...gymFilter,
       userId: userId,
       type: 'meal',
       date: { $gte: oneMonthAgo }
@@ -265,6 +290,7 @@ async function getMonthlyStatsData(userId: string) {
     CalendarEvent.aggregate([
       {
         $match: {
+          ...gymFilter,
           userId: userId,
           date: { $gte: oneMonthAgo }
         }

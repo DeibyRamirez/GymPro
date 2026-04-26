@@ -17,11 +17,11 @@ async function verifyAuth(req: NextRequest) {
   if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
   return user;
 }
-
+// Definición de los filtros que se pueden aplicar al obtener las asignaciones
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    await verifyAuth(req);
+    const user = await verifyAuth(req);
     const { id } = await context.params;
 
     const assignment = await Assignment.findById(id)
@@ -31,12 +31,16 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       .populate('mealPlanId', 'name description calories duration');
 
     if (!assignment) return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 });
+    if (String(assignment.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver esta asignación' }, { status: 403 });
+    }
     return NextResponse.json({ assignment });
   } catch {
     return NextResponse.json({ error: 'Error al obtener asignación' }, { status: 500 });
   }
 }
 
+// Definición de los filtros que se pueden aplicar al actualizar el progreso de una asignación
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
@@ -45,14 +49,23 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     const assignment = await Assignment.findById(id);
     if (!assignment) return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 });
+    if (String(assignment.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para editar esta asignación' }, { status: 403 });
+    }
 
     if (user.role !== 'admin' && assignment.trainerId.toString() !== user._id.toString()) {
       return NextResponse.json({ error: 'No tienes permisos para editar esta asignación' }, { status: 403 });
     }
 
     const body = await req.json();
-    if (body.routineId && !(await Routine.findById(body.routineId))) return NextResponse.json({ error: 'Rutina inválida' }, { status: 400 });
-    if (body.mealPlanId && !(await MealPlan.findById(body.mealPlanId))) return NextResponse.json({ error: 'Plan alimenticio inválido' }, { status: 400 });
+    if (body.routineId) {
+      const routine = await Routine.findById(body.routineId);
+      if (!routine || String(routine.gymId || null) !== String(user.gymId || null)) return NextResponse.json({ error: 'Rutina inválida' }, { status: 400 });
+    }
+    if (body.mealPlanId) {
+      const mealPlan = await MealPlan.findById(body.mealPlanId);
+      if (!mealPlan || String(mealPlan.gymId || null) !== String(user.gymId || null)) return NextResponse.json({ error: 'Plan alimenticio inválido' }, { status: 400 });
+    }
 
     const updatedAssignment = await Assignment.findByIdAndUpdate(id, body, { new: true, runValidators: true })
       .populate('clientId', 'name email avatar role trainerId')
@@ -65,7 +78,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Error al actualizar asignación' }, { status: 500 });
   }
 }
-
+// Definición de los filtros que se pueden aplicar al actualizar el progreso de una asignación
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
@@ -74,6 +87,9 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
     const assignment = await Assignment.findById(id);
     if (!assignment) return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 });
+    if (String(assignment.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para eliminar esta asignación' }, { status: 403 });
+    }
 
     if (user.role !== 'admin' && assignment.trainerId.toString() !== user._id.toString()) {
       return NextResponse.json({ error: 'No tienes permisos para eliminar esta asignación' }, { status: 403 });

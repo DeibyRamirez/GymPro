@@ -18,12 +18,13 @@ async function verifyAuth(req: NextRequest) {
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    await verifyAuth(req);
+    const user = await verifyAuth(req);
     const { id } = await context.params;
 
     const event = await CalendarEvent.findById(id);
     if (!event) return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
     if (event.type !== 'class') return NextResponse.json({ error: 'Solo aplica para clases' }, { status: 400 });
+    if (String(event.gymId || null) !== String(user.gymId || null)) return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
 
     const capacity = event.capacity || 0;
     const bookedCount = event.bookedCount || 0;

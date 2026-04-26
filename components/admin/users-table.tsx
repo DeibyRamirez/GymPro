@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 interface UsersTableProps {
-  users: Array<{ id: string; name: string; email: string; role: UserRole; avatar?: string; trainerId?: string; isActive?: boolean }>
+  users: Array<{ id: string; name: string; email: string; role: UserRole; avatar?: string; trainerId?: string; isActive?: boolean; gymSlug?: string | null }>
   onRefresh?: () => void
 }
 
@@ -95,7 +95,7 @@ export function UsersTable({ users, onRefresh }: UsersTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.map((user: { id: string; name: string; email: string; role: UserRole; avatar?: string; trainerId?: string; isActive?: boolean }) => {
+          {users.map((user: { id: string; name: string; email: string; role: UserRole; avatar?: string; trainerId?: string; isActive?: boolean; gymSlug?: string | null }) => {
             const RoleIcon = roleIcons[user.role]
             const assignedTrainer = trainers.find((trainer) => trainer.id === user.trainerId)
             return (

@@ -47,6 +47,9 @@ export async function GET(req: NextRequest, { params }: Props) {
         { status: 404 }
       );
     }
+    if (String(event.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver este evento' }, { status: 403 });
+    }
 
     // Verificar permisos
     const canView = 
@@ -85,6 +88,9 @@ export async function PUT(req: NextRequest, { params }: Props) {
         { error: 'Evento no encontrado' },
         { status: 404 }
       );
+    }
+    if (String(event.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para editar este evento' }, { status: 403 });
     }
 
     // Verificar permisos
@@ -154,6 +160,9 @@ export async function DELETE(req: NextRequest, { params }: Props) {
         { status: 404 }
       );
     }
+    if (String(event.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para eliminar este evento' }, { status: 403 });
+    }
 
     // Verificar permisos
     const canDelete = 
@@ -197,6 +206,9 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         { error: 'Evento no encontrado' },
         { status: 404 }
       );
+    }
+    if (String(event.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para actualizar este evento' }, { status: 403 });
     }
 
     // Verificar permisos

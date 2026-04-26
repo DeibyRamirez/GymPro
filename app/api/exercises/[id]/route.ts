@@ -15,15 +15,18 @@ async function verifyAuth(req: NextRequest) {
   if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
   return user;
 }
-
+// Definición de los filtros que se pueden aplicar al obtener los ejercicios
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    await verifyAuth(req);
+    const user = await verifyAuth(req);
     const { id } = await context.params;
 
     const exercise = await Exercise.findById(id).populate('createdBy', 'name email');
     if (!exercise) return NextResponse.json({ error: 'Ejercicio no encontrado' }, { status: 404 });
+    if (String(exercise.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver este ejercicio' }, { status: 403 });
+    }
 
     return NextResponse.json({ exercise });
   } catch {
@@ -31,6 +34,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   }
 }
 
+// Definición de los filtros que se pueden aplicar al actualizar un ejercicio
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
@@ -39,6 +43,9 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     const exercise = await Exercise.findById(id);
     if (!exercise) return NextResponse.json({ error: 'Ejercicio no encontrado' }, { status: 404 });
+    if (String(exercise.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para editar este ejercicio' }, { status: 403 });
+    }
 
     if (user.role !== 'admin' && exercise.createdBy.toString() !== user._id.toString()) {
       return NextResponse.json({ error: 'No tienes permisos para editar este ejercicio' }, { status: 403 });
@@ -51,6 +58,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   }
 }
 
+// Definición de los filtros que se pueden aplicar al eliminar un ejercicio
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
@@ -59,6 +67,9 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
     const exercise = await Exercise.findById(id);
     if (!exercise) return NextResponse.json({ error: 'Ejercicio no encontrado' }, { status: 404 });
+    if (String(exercise.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para eliminar este ejercicio' }, { status: 403 });
+    }
 
     if (user.role !== 'admin' && exercise.createdBy.toString() !== user._id.toString()) {
       return NextResponse.json({ error: 'No tienes permisos para eliminar este ejercicio' }, { status: 403 });

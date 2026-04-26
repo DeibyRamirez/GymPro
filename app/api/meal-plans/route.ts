@@ -42,6 +42,9 @@ export async function GET(req: NextRequest) {
 
     // Construir filtros
     const filters: Record<string, unknown> = {};
+    if (user.gymId) {
+      filters.gymId = user.gymId;
+    }
     
     // Solo admins y trainers pueden ver todos los planes
     if (user.role === 'client') {
@@ -140,7 +143,8 @@ export async function POST(req: NextRequest) {
       meals,
       duration,
       tags: tags || [],
-      createdBy: user._id
+      createdBy: user._id,
+      gymId: user.gymId || null,
     });
 
     await mealPlan.save();

@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
 
     const event = await CalendarEvent.findOne({ attendanceCode: code, type: 'class' });
     if (!event) return NextResponse.json({ error: 'Código inválido' }, { status: 400 });
+    if (String(event.gymId || null) !== String(user.gymId || null)) return NextResponse.json({ error: 'Código inválido' }, { status: 400 });
 
     return NextResponse.json({ message: 'Check-in validado', user: user.name, event: event.title });
   } catch {

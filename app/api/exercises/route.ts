@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     const muscleGroup = searchParams.get('muscleGroup') || '';
 
     // Construir filtros
-    const filters: Record<string, unknown> = {};
+    const filters: Record<string, unknown> = user.gymId ? { gymId: user.gymId } : { gymId: null };
 
     if (search) {
       filters.name = { $regex: search, $options: 'i' };
@@ -115,7 +115,8 @@ export async function POST(req: NextRequest) {
       muscleGroups,
       equipment: equipment || [],
       difficulty: difficulty || 'beginner',
-      createdBy: user._id
+      createdBy: user._id,
+      gymId: user.gymId || null
     });
 
     await exercise.save();

@@ -13,9 +13,11 @@ import { Dumbbell } from "lucide-react"
 interface LoginFormProps {
   onLogin: (user: User) => void
   onSwitchToRegister?: () => void
+  redirectTo?: string
+  gymSlug?: string
 }
 
-export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
+export function LoginForm({ onLogin, onSwitchToRegister, redirectTo = '/app', gymSlug }: LoginFormProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -42,6 +44,7 @@ export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
         body: JSON.stringify({
           email,
           password,
+          gymSlug,
         }),
       })
 
@@ -61,9 +64,12 @@ export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
         role: data.user.role,
         avatar: data.user.avatar,
         trainerId: data.user.trainerId,
+        gymId: data.user.gymId,
+        gymSlug: data.user.gymSlug,
       }
 
       onLogin(user)
+      window.location.assign(user.role === 'superadmin' ? '/superadmin' : redirectTo)
     } catch (err) {
       setError("Error de conexión. Por favor intenta de nuevo.")
       setLoading(false)
@@ -78,8 +84,8 @@ export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
             <Dumbbell className="w-8 h-8 text-primary-foreground" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold text-balance">FitPro Manager</CardTitle>
-            <CardDescription className="text-base mt-2">Plataforma de gestión deportiva profesional</CardDescription>
+            <CardTitle className="text-3xl font-bold text-balance">{gymSlug?.toUpperCase()}</CardTitle>
+            <CardDescription className="text-base mt-2">Acceso al SaaS de gestión de gimnasios</CardDescription>
           </div>
         </CardHeader>
         <CardContent>

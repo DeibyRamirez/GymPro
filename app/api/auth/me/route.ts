@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
+import Gym from '@/lib/models/Gym';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secret-key-cambiar-en-produccion';
 
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
 
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
     const user = await User.findById(decoded.userId).select('-password');
+    const gym = user?.gymId ? await Gym.findById(user.gymId).select('slug name') : null;
 
     if (!user || !user.isActive) {
       return NextResponse.json({ user: null }, { status: 401 });
@@ -30,6 +32,9 @@ export async function GET(req: NextRequest) {
         role: user.role,
         avatar: user.avatar,
         trainerId: user.trainerId?.toString(),
+        gymId: user.gymId?.toString(),
+        gymSlug: gym?.slug || null,
+        gymName: gym?.name || null,
       },
     });
   } catch {

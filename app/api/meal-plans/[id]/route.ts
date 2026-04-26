@@ -36,6 +36,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if (!mealPlan) {
       return NextResponse.json({ error: "Plan alimenticio no encontrado" }, { status: 404 });
     }
+    if (String(mealPlan.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver este plan' }, { status: 403 });
+    }
 
     // Permisos
     if (
@@ -66,6 +69,9 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     if (user.role !== "admin" && mealPlan.createdBy.toString() !== user._id.toString()) {
       return NextResponse.json({ error: "No tienes permisos para editar este plan" }, { status: 403 });
+    }
+    if (String(mealPlan.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para editar este plan' }, { status: 403 });
     }
 
     const data = await req.json();
@@ -100,6 +106,9 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
     if (user.role !== "admin" && mealPlan.createdBy.toString() !== user._id.toString()) {
       return NextResponse.json({ error: "No tienes permisos para eliminar este plan" }, { status: 403 });
+    }
+    if (String(mealPlan.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para eliminar este plan' }, { status: 403 });
     }
 
     await MealPlan.findByIdAndUpdate(id, { isActive: false });

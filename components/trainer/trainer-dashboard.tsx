@@ -6,6 +6,7 @@ import { ClientsView } from "./clients-view"
 import { GroupClassesPanel } from "./group-classes-panel"
 import { RoutinesLibrary } from "./routines-library"
 import { MealPlansLibrary } from "./meal-plans-library"
+import { ClientProgressCard } from "./client-progress-card"
 import { Users, Dumbbell, UtensilsCrossed, BarChart3 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 
@@ -14,10 +15,22 @@ interface TrainerDashboardProps {
   trainerId: string
 }
 
+type ClientProgressItem = {
+  clientName: string
+  clientEmail: string
+  progressCount: number
+  latestMeasurement?: {
+    weight?: number
+    bodyFat?: number
+    date?: string
+  }
+}
+
 export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
   const [activeTab, setActiveTab] = useState("clients")
-  const [stats, setStats] = useState<Record<string, number> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
+  const [clientProgress, setClientProgress] = useState<ClientProgressItem[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
@@ -30,7 +43,10 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
         })
 
         const data = await res.json()
-        if (mounted) setStats(data.stats)
+        if (mounted) {
+          setStats(data.stats)
+          setClientProgress((data.stats?.clientProgress || []) as ClientProgressItem[])
+        }
       } catch (err: unknown) {
         console.log("Error al obtener dashboard", err)
       } finally {
@@ -47,7 +63,7 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
     }
   }, [trainerId])
 
-  if (loading) return <p>Cargando...</p>;
+  if (loading) return <p>Cargando...</p>
 
   return (
     <div className="space-y-6">
@@ -60,7 +76,7 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
         </div>
 
 
-        <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-4">
           <Card className="p-4 border-l-4 border-l-primary bg-gradient-to-br from-primary/5 to-transparent">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -110,6 +126,8 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
           </Card>
         </div>
       </div>
+
+      <ClientProgressCard clientProgress={clientProgress} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 h-auto p-1">

@@ -9,6 +9,7 @@ export interface ICalendarEvent extends Document {
   type: 'workout' | 'meal' | 'rest' | 'assessment' | 'appointment' | 'reminder' | 'class';
   completed: boolean;
   userId: mongoose.Types.ObjectId;
+  gymId?: mongoose.Types.ObjectId | null;
   trainerId?: mongoose.Types.ObjectId;
   routineId?: mongoose.Types.ObjectId;
   mealPlanId?: mongoose.Types.ObjectId;
@@ -57,6 +58,11 @@ const CalendarEventSchema = new Schema<ICalendarEvent>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'El usuario es requerido']
+  },
+  gymId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Gym',
+    default: null
   },
   trainerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -124,6 +130,7 @@ const CalendarEventSchema = new Schema<ICalendarEvent>({
 // Índices
 CalendarEventSchema.index({ userId: 1, date: 1 });
 CalendarEventSchema.index({ trainerId: 1, date: 1 });
+CalendarEventSchema.index({ gymId: 1, date: 1 });
 CalendarEventSchema.index({ type: 1 });
 CalendarEventSchema.index({ completed: 1 });
 CalendarEventSchema.index({ date: 1 });

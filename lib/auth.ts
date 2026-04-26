@@ -7,6 +7,9 @@ export interface User {
   role: UserRole
   avatar?: string
   trainerId?: string // Para clientes, ID del entrenador asignado
+  gymId?: string
+  gymSlug?: string | null
+  gymName?: string | null
 }
 
 // Simulación de usuarios para demostración

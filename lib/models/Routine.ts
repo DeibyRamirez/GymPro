@@ -19,6 +19,7 @@ export interface IRoutine extends Document {
   tags: string[];
   isActive: boolean;
   createdBy: mongoose.Types.ObjectId;
+  gymId?: mongoose.Types.ObjectId | null;
   sourceRoutineId?: mongoose.Types.ObjectId;
   isTemplate: boolean;
   createdAt: Date;
@@ -104,6 +105,11 @@ const RoutineSchema = new Schema<IRoutine>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'El creador de la rutina es requerido']
+  },
+  gymId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Gym',
+    default: null
   }
 }, {
   timestamps: true,
@@ -124,6 +130,7 @@ RoutineSchema.index({ difficulty: 1 });
 RoutineSchema.index({ createdBy: 1 });
 RoutineSchema.index({ tags: 1 });
 RoutineSchema.index({ isActive: 1 });
+RoutineSchema.index({ gymId: 1 });
 
 delete mongoose.models.Routine;
 const Routine = mongoose.models.Routine || mongoose.model<IRoutine>('Routine', RoutineSchema);

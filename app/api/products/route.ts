@@ -15,11 +15,15 @@ async function verifyAuth(req: NextRequest) {
   return user;
 }
 
+// Definición de los filtros que se pueden aplicar al obtener productos
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    await verifyAuth(req);
-    const products = await Product.find({ isActive: true }).sort({ createdAt: -1 });
+    const user = await verifyAuth(req);
+    const products = await Product.find({ isActive: true, gymId: user.gymId || null }).sort({ createdAt: -1 });
+    // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios 
+    // encontrar gimnasios relevantes de manera rápida y eficiente, mejorando así la experiencia de navegación y facilitando la
+    // conexión entre los clientes y los gimnasios que mejor se adapten a sus necesidades e intereses.
     return NextResponse.json({
       products: products.map((product) => ({
         id: product._id.toString(),
@@ -37,7 +41,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Error al obtener productos' }, { status: 500 });
   }
 }
-
+// Definición de los filtros que se pueden aplicar al obtener productos
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
@@ -47,11 +51,17 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios 
+    // encontrar gimnasios relevantes de manera rápida y eficiente, mejorando así la experiencia de navegación y facilitando la
+    // conexión entre los clientes y los gimnasios que mejor se adapten a sus necesidades e intereses.
     const { name, description, category, price, stock, lowStockThreshold, image } = body;
     if (!name || !description || !category || price === undefined || stock === undefined) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
     }
 
+    // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios 
+    // encontrar gimnasios relevantes de manera rápida y eficiente, mejorando así la experiencia de navegación y facilitando la
+    // conexión entre los clientes y los gimnasios que mejor se adapten a sus necesidades e intereses.
     const product = await Product.create({
       name,
       description,
@@ -60,6 +70,7 @@ export async function POST(req: NextRequest) {
       stock,
       lowStockThreshold: lowStockThreshold ?? 5,
       image,
+      gymId: user.gymId || null,
     });
 
     return NextResponse.json({ product }, { status: 201 });

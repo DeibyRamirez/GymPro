@@ -14,7 +14,7 @@ async function verifyAuth(req: NextRequest) {
   if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
   return user;
 }
-
+// Definimos un tipo para el cuerpo de la solicitud de actualización, con campos opcionales para permitir actualizaciones parciales
 type UserUpdateBody = Partial<{
   name: string
   email: string
@@ -31,9 +31,10 @@ type UserUpdateBody = Partial<{
   medicalConditions: string
   isActive: boolean
 }>
-
+// Campos que se pueden actualizar, definidos como una tupla de literales para mantener la tipificación estricta
 const updatableFields = ['name', 'email', 'role', 'avatar', 'trainerId', 'age', 'weight', 'height', 'gender', 'phone', 'goal', 'activityLevel', 'medicalConditions', 'isActive'] as const
 
+// GET para obtener detalles de un usuario
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Error al obtener usuario' }, { status: 500 });
   }
 }
-
+// PUT para actualizar usuario
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
@@ -117,7 +118,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     return NextResponse.json({ error: 'Error al actualizar usuario' }, { status: 500 });
   }
 }
-
+// Para eliminar un usuario, en lugar de borrarlo físicamente, lo marcamos como inactivo
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();

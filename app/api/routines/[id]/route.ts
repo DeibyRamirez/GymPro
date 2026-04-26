@@ -40,6 +40,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if (!routine) {
       return NextResponse.json({ error: "Rutina no encontrada" }, { status: 404 });
     }
+    if (String(routine.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para ver esta rutina' }, { status: 403 });
+    }
 
 
 
@@ -91,20 +94,21 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       let exerciseId = ex._id || ex.exercise;
 
       // Si no tiene ID, creamos un nuevo ejercicio
-      if (!exerciseId) {
-        const newExercise = await Exercise.create({
+        if (!exerciseId) {
+          const newExercise = await Exercise.create({
           name: ex.name || "Ejercicio sin nombre",
           instructions: ex.instructions || "Sin instrucciones",
           sets: ex.sets || 1,
           reps: ex.reps || "1",
           rest: ex.rest || "0s",
           image: ex.image || "",
-          muscleGroups: ex.muscleGroups || [],
-          equipment: ex.equipment || [],
-          createdBy: user._id,
-        });
-        exerciseId = newExercise._id;
-      }
+            muscleGroups: ex.muscleGroups || [],
+            equipment: ex.equipment || [],
+            createdBy: user._id,
+            gymId: user.gymId || null,
+          });
+          exerciseId = newExercise._id;
+        }
 
       exercisesWithIds.push({
         exercise: exerciseId,
@@ -135,6 +139,9 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         { status: 404 }
       );
     }
+    if (String(updatedRoutine.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para editar esta rutina' }, { status: 403 });
+    }
 
     return NextResponse.json(updatedRoutine);
   } catch (error) {
@@ -157,6 +164,9 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const routine = await Routine.findById(id);
     if (!routine) {
       return NextResponse.json({ error: "Rutina no encontrada" }, { status: 404 });
+    }
+    if (String(routine.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para eliminar esta rutina' }, { status: 403 });
     }
 
 

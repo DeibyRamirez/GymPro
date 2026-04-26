@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ExerciseCard } from "./exercise-card"
 import { ArrowLeft, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
-import type { Routine } from "@/lib/data"
-
-type AssignedRoutine = Routine & {
+type AssignedRoutine = {
+  id?: string
   assignmentId?: string
+  name: string
+  description: string
+  duration: string
+  difficulty: "beginner" | "intermediate" | "advanced"
   exercises: Array<{
     _id?: string
     exercise: {

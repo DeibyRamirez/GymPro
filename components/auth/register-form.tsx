@@ -15,9 +15,11 @@ import type { User } from "@/lib/auth"
 interface RegisterFormProps {
   onRegister: (user: User) => void
   onSwitchToLogin: () => void
+  redirectTo?: string
+  gymSlug?: string
 }
 
-export function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps) {
+export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app', gymSlug }: RegisterFormProps) {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -96,6 +98,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps)
           email,
           password,
           role,
+          gymSlug,
           // Solo incluir campos de gimnasio si es cliente
           ...(role === "client" && {
             age: parseInt(age),
@@ -129,6 +132,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin }: RegisterFormProps)
       }
 
       onRegister(user)
+      window.location.assign(redirectTo)
     } catch (err) {
       setError("Error de conexión. Por favor intenta de nuevo.")
       setLoading(false)

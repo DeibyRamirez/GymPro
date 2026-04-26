@@ -11,6 +11,7 @@ export interface IProduct extends Document {
   lowStockThreshold: number;
   image?: string;
   isActive: boolean;
+  gymId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +25,7 @@ const ProductSchema = new Schema<IProduct>({
   lowStockThreshold: { type: Number, required: true, min: 0, default: 5 },
   image: { type: String, default: '/placeholder.svg' },
   isActive: { type: Boolean, default: true },
+  gymId: { type: mongoose.Schema.Types.ObjectId, ref: 'Gym', default: null },
 }, {
   timestamps: true,
   toJSON: {
@@ -40,6 +42,7 @@ const ProductSchema = new Schema<IProduct>({
 ProductSchema.index({ category: 1 });
 ProductSchema.index({ isActive: 1 });
 ProductSchema.index({ stock: 1 });
+ProductSchema.index({ gymId: 1 });
 
 const Product = mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
 
