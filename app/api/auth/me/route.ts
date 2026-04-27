@@ -4,7 +4,7 @@ import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import Gym from '@/lib/models/Gym';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secret-key-cambiar-en-produccion';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function GET(req: NextRequest) {
   try {

@@ -7,7 +7,7 @@ import MealPlan from '@/lib/models/MealPlan';
 import Exercise from '@/lib/models/Exercise';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secret-key-cambiar-en-produccion';
+const JWT_SECRET = process.env.JWT_SECRET!;
 type ApiErrorLike = { message?: string; name?: string; errors?: Record<string, { message: string }> }
 
 // Función para verificar la autenticación del usuario a través del token JWT

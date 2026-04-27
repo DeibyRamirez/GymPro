@@ -1,10 +1,10 @@
 import Assignment from '@/lib/models/Assignment';
 import User from '@/lib/models/User';
 import connectDB from '@/lib/mongodb';
-import jwt, { Secret } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
 
-const JWT_SECRET: Secret = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 // Función para verificar la autenticación del usuario a través del token JWT
 async function verifyAuth(req: NextRequest) {

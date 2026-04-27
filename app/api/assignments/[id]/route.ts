@@ -6,7 +6,7 @@ import Routine from '@/lib/models/Routine';
 import MealPlan from '@/lib/models/MealPlan';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tu-secret-key-cambiar-en-produccion';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 async function verifyAuth(req: NextRequest) {
   const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
