@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Dumbbell, Clock, TrendingUp, Edit, Trash2, Eye, Copy } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import type { Routine } from "@/lib/data"
+import { Clock, Copy, Dumbbell, Edit, Eye, Plus, Search, TrendingUp } from "lucide-react"
+import { useEffect, useState } from "react"
 import { CreateRoutineDialog } from "./create-routine-dialog"
 import { EditRoutineDialog } from "./edit-routine-dialog"
 import { ViewRoutineDialog } from "./view-routine-dialog"
@@ -15,6 +15,7 @@ interface RoutinesLibraryProps {
   trainerId: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -32,10 +33,10 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
   // )
 
   const filteredRoutines = routines.filter(
-  (routine) =>
-    routine.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    routine.description?.toLowerCase().includes(searchQuery.toLowerCase())
-)
+    (routine) =>
+      routine.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      routine.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
 
   const getDifficultyColor = (difficulty: string) => {
@@ -171,10 +172,10 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
                   <Edit className="h-4 w-4" />
                   Editar
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => console.log("Duplicar", routine.id)}>
+                <Button variant="outline" size="sm" onClick={() => console.log("Duplicar", routine._id)}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                
+
               </div>
             </div>
           </Card>

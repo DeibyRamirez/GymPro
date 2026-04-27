@@ -12,6 +12,7 @@ interface ProgressOverviewProps {
 type ProfileData = {
   weight?: number
   goal?: 'perder_peso' | 'ganar_masa' | 'mantenimiento' | 'tonificar' | 'resistencia' | 'otro'
+  activityLevel?: 'principiante' | 'intermedio' | 'avanzado'
 }
 
 type CalendarEventItem = {

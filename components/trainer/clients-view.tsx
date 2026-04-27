@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Search, Users, Filter } from "lucide-react"
 import type { User } from "@/lib/auth"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "@/hooks/use-toast"
 
 interface ClientsViewProps {
   trainerId: string
@@ -20,23 +21,40 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false)
   const [mealPlanDialogOpen, setMealPlanDialogOpen] = useState(false)
   const [clients, setClients] = useState<User[]>([])
-  const [assignments, setAssignments] = useState<Array<{ clientId?: { _id?: string; id?: string } | string }>>([])
+  const [assignments, setAssignments] = useState<Array<{ clientId?: { _id?: string; id?: string } | string; routineId?: string; mealPlanId?: string }>>([])
 
   useEffect(() => {
     let mounted = true
 
     const load = async () => {
-      const [clientsRes, assignmentsRes] = await Promise.all([
-        fetch(`/api/users?role=client&trainerId=${trainerId}`, { credentials: 'include' }),
-        fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: 'include' }),
-      ])
+      try {
+        const [clientsRes, assignmentsRes] = await Promise.all([
+          fetch(`/api/users?role=client&trainerId=${trainerId}`, { credentials: 'include' }),
+          fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: 'include' }),
+        ])
 
-      const clientsData = await clientsRes.json()
-      const assignmentsData = await assignmentsRes.json()
+        const clientsData = await clientsRes.json().catch(() => null)
+        const assignmentsData = await assignmentsRes.json().catch(() => null)
 
-      if (mounted) {
-        setClients(clientsData.users || [])
-        setAssignments(assignmentsData.assignments || [])
+        if (!clientsRes.ok) {
+          throw new Error(clientsData?.error || 'No se pudieron cargar los clientes')
+        }
+
+        if (!assignmentsRes.ok) {
+          throw new Error(assignmentsData?.error || 'No se pudieron cargar las asignaciones')
+        }
+
+        if (mounted) {
+          setClients(clientsData?.users || [])
+          setAssignments(assignmentsData?.assignments || [])
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'No se pudieron cargar los datos del panel'
+        toast({
+          title: 'Error al cargar clientes',
+          description: message,
+          variant: 'destructive',
+        })
       }
     }
 
@@ -51,8 +69,18 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
 
   const refreshAssignments = async () => {
     const assignmentsRes = await fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: 'include' })
-    const assignmentsData = await assignmentsRes.json()
-    setAssignments(assignmentsData.assignments || [])
+    const assignmentsData = await assignmentsRes.json().catch(() => null)
+
+    if (!assignmentsRes.ok) {
+      throw new Error(assignmentsData?.error || 'No se pudieron refrescar las asignaciones')
+    }
+
+    setAssignments(assignmentsData?.assignments || [])
+  }
+
+  const getAssignmentClientId = (clientId?: { _id?: string; id?: string } | string) => {
+    if (typeof clientId === "string") return clientId
+    return clientId?._id || clientId?.id
   }
 
   const filteredClients = clients.filter((client) => {
@@ -62,7 +90,7 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
 
     if (filterStatus === "all") return matchesSearch
 
-    const assignment = assignments.find((a) => a.clientId?._id === client.id || a.clientId?.id === client.id || a.clientId === client.id)
+    const assignment = assignments.find((a) => getAssignmentClientId(a.clientId) === client.id)
     if (filterStatus === "active") return matchesSearch && assignment
     if (filterStatus === "inactive") return matchesSearch && !assignment
 
@@ -82,7 +110,7 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
   const handleRoutineAssigned = async (payload: { routineId: string; durationWeeks: number; weeklySchedule: Array<{ dayOfWeek: number; isRestDay: boolean; title?: string }> }) => {
     if (!selectedClient) return
 
-    await fetch('/api/assignments', {
+    const res = await fetch('/api/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -96,29 +124,46 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
       }),
     })
 
+    const data = await res.json().catch(() => null)
+
+    if (!res.ok) {
+      throw new Error(data?.error || 'No se pudo asignar la rutina')
+    }
+
     await refreshAssignments()
   }
 
   const handleMealPlanAssigned = async (mealPlanId: string) => {
     if (!selectedClient) return
 
-    await fetch('/api/assignments', {
-      method: 'POST',
+    const currentAssignment = getClientAssignment(selectedClient.id)
+    const assignmentId =
+      typeof currentAssignment === "object" && currentAssignment
+        ? (currentAssignment as { id?: string; _id?: string }).id || (currentAssignment as { id?: string; _id?: string })._id
+        : undefined
+
+    if (!assignmentId) {
+      throw new Error('No existe una asignación activa para este cliente. Primero asigna una rutina.')
+    }
+
+    const res = await fetch(`/api/assignments/${assignmentId}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        clientId: selectedClient.id,
-        trainerId,
-        mealPlanId,
-        startDate: new Date().toISOString(),
-      }),
+      body: JSON.stringify({ mealPlanId }),
     })
+
+    const data = await res.json().catch(() => null)
+
+    if (!res.ok) {
+      throw new Error(data?.error || 'No se pudo asignar el plan alimenticio')
+    }
 
     await refreshAssignments()
   }
 
   const getClientAssignment = (clientId: string) => {
-    return assignments.find((a) => a.clientId?._id === clientId || a.clientId?.id === clientId || a.clientId === clientId)
+    return assignments.find((a) => getAssignmentClientId(a.clientId) === clientId)
   }
 
   return (

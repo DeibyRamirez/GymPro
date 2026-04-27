@@ -161,7 +161,11 @@ UserSchema.pre('save', async function(next) {
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error: unknown) {
-    next(error);
+    if (error instanceof Error) {
+      next(error);
+      return;
+    }
+    next(new Error('Error al hashear la contraseña'));
   }
 });
 

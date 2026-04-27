@@ -4,10 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { UtensilsCrossed, Flame, ChevronRight } from "lucide-react"
-import type { MealPlan } from "@/lib/data"
 
 interface AssignedMealPlanCardProps {
-  mealPlan: MealPlan
+  mealPlan: {
+    id: string
+    name: string
+    description: string
+    calories: number
+    meals: Array<{ id?: string; name: string }>
+  }
   onViewDetails: () => void
 }
 

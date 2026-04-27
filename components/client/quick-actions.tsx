@@ -6,9 +6,12 @@ import { Calendar, MessageSquare, TrendingUp, FileText } from "lucide-react"
 
 interface QuickActionsProps {
   onCalendarClick?: () => void
+  onBodyClick?: () => void
+  onMessagesClick?: () => void
+  onReportsClick?: () => void
 }
 
-export function QuickActions({ onCalendarClick }: QuickActionsProps) {
+export function QuickActions({ onCalendarClick, onBodyClick, onMessagesClick, onReportsClick }: QuickActionsProps) {
   return (
     <Card>
       <CardHeader>
@@ -23,15 +26,15 @@ export function QuickActions({ onCalendarClick }: QuickActionsProps) {
           </div>
         </Button>
 
-        <Button variant="outline" className="justify-start h-auto py-3 bg-transparent">
+        <Button variant="outline" className="justify-start h-auto py-3 bg-transparent" onClick={onBodyClick}>
           <TrendingUp className="h-5 w-5 mr-3 text-accent" />
           <div className="text-left">
-            <div className="font-medium">Registrar Progreso</div>
-            <div className="text-xs text-muted-foreground">Peso, medidas, fotos</div>
+            <div className="font-medium">Registro corporal</div>
+            <div className="text-xs text-muted-foreground">Peso, medidas y notas</div>
           </div>
         </Button>
 
-        <Button variant="outline" className="justify-start h-auto py-3 bg-transparent">
+        <Button variant="outline" className="justify-start h-auto py-3 bg-transparent" onClick={onMessagesClick}>
           <MessageSquare className="h-5 w-5 mr-3 text-chart-3" />
           <div className="text-left">
             <div className="font-medium">Mensajes</div>
@@ -39,7 +42,7 @@ export function QuickActions({ onCalendarClick }: QuickActionsProps) {
           </div>
         </Button>
 
-        <Button variant="outline" className="justify-start h-auto py-3 bg-transparent">
+        <Button variant="outline" className="justify-start h-auto py-3 bg-transparent" onClick={onReportsClick}>
           <FileText className="h-5 w-5 mr-3 text-chart-4" />
           <div className="text-left">
             <div className="font-medium">Mis Reportes</div>

@@ -6,6 +6,12 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secret-key-cambiar-en-produccion';
 
+type RoutineProgressItem = {
+  routineId: { toString: () => string }
+  exerciseId: { toString: () => string }
+  setNumber: number
+}
+
 // Función para verificar la autenticación del usuario a través del token JWT
 async function verifyAuth(req: NextRequest) {
   const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
@@ -59,7 +65,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     // manteniendo así la integridad y precisión de los datos de progreso de cada cliente.
     assignment.routineProgress = assignment.routineProgress || [];
     const exists = assignment.routineProgress.some(
-      (item: { routineId: { toString: () => any; }; exerciseId: { toString: () => any; }; setNumber: number; }) => item.routineId.toString() === routineId && item.exerciseId.toString() === exerciseId && item.setNumber === Number(setNumber)
+      (item: RoutineProgressItem) => item.routineId.toString() === routineId && item.exerciseId.toString() === exerciseId && item.setNumber === Number(setNumber)
     );
 
     // Si la serie de ejercicio no ha sido marcada como completada previamente, agregar un nuevo registro de progreso para esa serie,

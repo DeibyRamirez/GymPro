@@ -1,12 +1,13 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { CalendarPlus, Users } from "lucide-react"
+import { useEffect, useState } from "react"
 
 type Client = { id: string; name: string }
 type ClassEvent = { id: string; title: string; date: string; capacity?: number; bookedCount?: number; attendanceCode?: string; userId?: { id?: string; name?: string } }
@@ -17,6 +18,7 @@ export function GroupClassesPanel({ trainerId }: { trainerId: string }) {
   const [title, setTitle] = useState("")
   const [date, setDate] = useState("")
   const [capacity, setCapacity] = useState("10")
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [attendanceCode, setAttendanceCode] = useState("")
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([])
 

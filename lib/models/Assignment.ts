@@ -165,10 +165,17 @@ const AssignmentSchema = new Schema<IAssignment>({
   timestamps: true,
   toJSON: {
     transform: function(doc, ret) {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-      return ret;
+      const transformed = ret as {
+        _id?: unknown;
+        __v?: unknown;
+        id?: unknown;
+        [key: string]: unknown;
+      };
+
+      transformed.id = transformed._id;
+      delete transformed._id;
+      delete transformed.__v;
+      return transformed;
     }
   }
 });

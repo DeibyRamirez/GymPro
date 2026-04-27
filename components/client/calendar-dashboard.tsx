@@ -10,22 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarView } from "@/components/calendar/calendar-view"
 import { UpcomingEvents } from "@/components/calendar/upcoming-events"
 import { ArrowLeft, Loader2 } from "lucide-react"
+import type { CalendarEvent } from "@/lib/calendar-data"
 
 interface CalendarDashboardProps {
   onBack: () => void
   assignmentId?: string
-}
-
-interface CalendarEvent {
-  id: string
-  title: string
-  description?: string
-  date: string
-  type: 'workout' | 'meal' | 'rest' | 'assessment' | 'class'
-  completed?: boolean
-  capacity?: number
-  bookedCount?: number
-  attendanceCode?: string
 }
 
 type CalendarApiEvent = {
@@ -67,17 +56,17 @@ export function CalendarDashboard({ onBack, assignmentId }: CalendarDashboardPro
         if (response.ok) {
           const data = await response.json()
           const sourceEvents = (data.events || data.calendario || []) as CalendarApiEvent[]
-          const formattedEvents = sourceEvents.map((event) => ({
-            id: event.id || event._id,
+          const formattedEvents = sourceEvents.map((event, index) => ({
+            id: event.id || event._id || `${event.date}-${event.title}-${index}`,
             title: event.title,
             description: event.description,
-            date: event.date,
+            date: new Date(event.date),
             type: event.type,
             completed: event.completed || false,
             capacity: event.capacity,
             bookedCount: event.bookedCount,
             attendanceCode: event.attendanceCode,
-          })) || []
+          })) as CalendarEvent[]
           setEvents(formattedEvents)
         }
       } catch (error) {
@@ -101,17 +90,17 @@ export function CalendarDashboard({ onBack, assignmentId }: CalendarDashboardPro
     if (response.ok) {
       const data = await response.json()
       const sourceEvents = (data.events || data.calendario || []) as CalendarApiEvent[]
-      const formattedEvents = sourceEvents.map((event) => ({
-        id: event.id || event._id,
+      const formattedEvents: CalendarEvent[] = sourceEvents.map((event, index) => ({
+        id: event.id ?? event._id ?? `${event.date}-${event.title}-${index}`,
         title: event.title,
         description: event.description,
-        date: event.date,
+        date: new Date(event.date),
         type: event.type,
         completed: event.completed || false,
         capacity: event.capacity,
         bookedCount: event.bookedCount,
         attendanceCode: event.attendanceCode,
-      })) || []
+      }))
       setEvents(formattedEvents)
     }
   }

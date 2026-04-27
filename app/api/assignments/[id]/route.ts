@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       .populate('clientId', 'name email avatar role trainerId')
       .populate('trainerId', 'name email avatar role')
       .populate({ path: 'routineId', select: 'name description duration difficulty exercises tags createdBy isTemplate sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment instructions sets reps rest difficulty isTemplate sourceExerciseId' } })
-      .populate('mealPlanId', 'name description calories duration');
+      .populate('mealPlanId', 'name description calories duration meals');
 
     if (!assignment) return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 });
     if (String(assignment.gymId || null) !== String(user.gymId || null)) {
@@ -71,7 +71,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       .populate('clientId', 'name email avatar role trainerId')
       .populate('trainerId', 'name email avatar role')
       .populate('routineId', 'name description duration difficulty')
-      .populate('mealPlanId', 'name description calories duration');
+      .populate('mealPlanId', 'name description calories duration meals');
 
     return NextResponse.json({ message: 'Asignación actualizada exitosamente', assignment: updatedAssignment });
   } catch {

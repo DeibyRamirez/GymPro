@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -9,14 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { Plus, Trash2, Flame } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { MealPlan, Meal } from "@/lib/data";
+import { Textarea } from "@/components/ui/textarea";
+import type { Meal, MealPlan } from "@/lib/data";
+import { Flame, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 interface EditMealPlanDialogProps {
   open: boolean;
@@ -68,9 +68,9 @@ export function EditMealPlanDialog({
     ]);
   };
 
-  const removeMeal = (id: string) => {
-    setMeals(meals.filter((meal) => meal.id !== id));
-  };
+  // const removeMeal = (id: string) => {
+  //   setMeals(meals.filter((meal) => meal.id !== id));
+  // };
 
   const updateMeal = (id: string, field: keyof MealForm, value: string | number) => {
     setMeals(meals.map((meal) => (meal.id === id ? { ...meal, [field]: value } : meal)));
@@ -250,7 +250,7 @@ export function EditMealPlanDialog({
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="font-semibold">Comida {index + 1}</h4>
-                      
+
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-3">
@@ -279,7 +279,7 @@ export function EditMealPlanDialog({
                           onChange={(e) =>
                             updateMeal(meal.id, "calories", Number.parseInt(e.target.value) || 0)
                           }
-                          />
+                        />
                       </div>
                     </div>
 

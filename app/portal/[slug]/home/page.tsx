@@ -1,11 +1,14 @@
-import { notFound } from "next/navigation"
-import Link from "next/link"
-import connectDB from "@/lib/mongodb"
-import Gym from "@/lib/models/Gym"
-import { Button } from "@/components/ui/button"
+/* eslint-disable @next/next/no-img-element */
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock3, Dumbbell, ShoppingBag, LayoutDashboard } from "lucide-react"
+import Gym from "@/lib/models/Gym"
+import GymEquipment from "@/lib/models/GymEquipment"
+import Product from "@/lib/models/Product"
+import connectDB from "@/lib/mongodb"
+import { Clock3, Dumbbell, LayoutDashboard, ShoppingBag } from "lucide-react"
+import Link from "next/link"
+import { notFound } from "next/navigation"
 
 // Este es el componente de la página de inicio del portal público de un gimnasio específico, identificado por su slug.
 type ProductCard = {
@@ -36,6 +39,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     notFound()
   }
 
+  const products = await Product.find({ gymId: gym._id, isActive: true }).sort({ createdAt: -1 })
+  const equipment = await GymEquipment.find({ gymId: gym._id, isActive: true }).sort({ createdAt: -1 })
+
   // Preparamos los datos del gimnasio para pasarlos a la UI, asegurándonos de manejar casos donde algunos campos puedan estar vacíos o no definidos.
   const gymData = {
     name: gym.name,
@@ -44,8 +50,17 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     phone: gym.phone,
     hours: gym.hours,
     location: gym.location,
-    products: gym.products as ProductCard[],
-    machines: gym.machines as MachineCard[],
+    products: products.map((product) => ({
+      name: product.name,
+      price: product.price,
+      image: product.image || '/placeholder.jpg',
+      description: product.description,
+    })) as ProductCard[],
+    machines: equipment.map((machine) => ({
+      name: machine.name,
+      image: machine.image || '/placeholder.jpg',
+      description: machine.description,
+    })) as MachineCard[],
   }
 
   return (

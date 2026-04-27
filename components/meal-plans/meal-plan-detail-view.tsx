@@ -42,8 +42,8 @@ export function MealPlanDetailView({ mealPlan, onBack }: MealPlanDetailViewProps
       <div className="border-t pt-6">
         <h3 className="text-xl font-semibold mb-4">Plan Diario</h3>
         <div className="grid gap-4 md:grid-cols-2">
-          {mealPlan.meals.map((meal) => (
-            <MealCard key={meal.id} meal={meal} />
+          {mealPlan.meals.map((meal, index) => (
+            <MealCard key={meal.id || `${meal.name}-${index}`} meal={meal} />
           ))}
         </div>
       </div>
@@ -87,8 +87,8 @@ export function MealPlanDetailView({ mealPlan, onBack }: MealPlanDetailViewProps
             Distribución de Calorías
           </h4>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-            {mealPlan.meals.map((meal) => (
-              <div key={meal.id} className="space-y-1">
+            {mealPlan.meals.map((meal, index) => (
+              <div key={meal.id || `${meal.name}-${index}`} className="space-y-1">
                 <p className="text-sm font-medium">{meal.name}</p>
                 <p className="text-2xl font-bold text-primary">{meal.calories}</p>
                 <p className="text-xs text-muted-foreground">

@@ -8,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 
 type JwtPayload = { userId: string }
 type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }> }
+type ApiErrorLike = { message?: string }
 
 // Middleware para verificar autenticación
 async function verifyAuth(req: NextRequest) {
@@ -95,8 +96,9 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('Error obteniendo planes alimenticios:', error);
+    const err = error as ApiErrorLike;
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: err.message || 'Error interno del servidor' },
       { status: 500 }
     );
   }
@@ -171,7 +173,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: (error as ApiErrorLike).message || 'Error interno del servidor' },
       { status: 500 }
     );
   }

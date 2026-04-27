@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, UtensilsCrossed, Flame, Apple, Edit, Trash2, Eye, Copy } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import type { MealPlan } from "@/lib/data"
+import { Apple, Copy, Edit, Eye, Flame, Plus, Search, UtensilsCrossed } from "lucide-react"
+import { useEffect, useState } from "react"
 import { CreateMealPlanDialog } from "./create-meal-plan-dialog"
 import { EditMealPlanDialog } from "./edit-meal-plan-dialog"
 import { ViewMealPlanDialog } from "./view-meal-plan-dialog"
@@ -15,6 +15,7 @@ interface MealPlansLibraryProps {
   trainerId: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -166,7 +167,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
                 <Button variant="outline" size="sm" onClick={() => console.log("Duplicar", plan.id)}>
                   <Copy className="h-4 w-4" />
                 </Button>
-                
+
               </div>
             </div>
           </Card>

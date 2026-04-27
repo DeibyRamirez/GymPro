@@ -1,14 +1,15 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { platformFeatures } from "@/lib/saas-data"
-import { Search, Shield, Sparkles, ChevronDown } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ChevronDown, Search, Shield, Sparkles } from "lucide-react"
+import Link from "next/link"
+import { useEffect, useMemo, useState } from "react"
 
 type GymCard = {
   name: string

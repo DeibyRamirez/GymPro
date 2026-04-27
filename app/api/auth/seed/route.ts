@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/lib/models/User';
-import Exercise from '@/lib/models/Exercise';
-import Routine from '@/lib/models/Routine';
-import MealPlan from '@/lib/models/MealPlan';
 import Assignment from '@/lib/models/Assignment';
 import CalendarEvent from '@/lib/models/CalendarEvent';
+import Exercise from '@/lib/models/Exercise';
+import MealPlan from '@/lib/models/MealPlan';
 import Product from '@/lib/models/Product';
+import Routine from '@/lib/models/Routine';
 import Sale from '@/lib/models/Sale';
+import User from '@/lib/models/User';
+import connectDB from '@/lib/mongodb';
+import { NextResponse } from 'next/server';
 
 // Solo permitir en desarrollo
 export async function POST() {
@@ -61,7 +61,6 @@ export async function POST() {
     console.log('👥 Usuarios creados');
 
     // Obtener IDs de usuarios
-    createdUsers.find(user => user.role === 'admin');
     const trainer1 = createdUsers.find(user => user.email === 'carlos@fitpro.com');
     const trainer2 = createdUsers.find(user => user.email === 'maria@fitpro.com');
 

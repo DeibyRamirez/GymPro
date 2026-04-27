@@ -2,15 +2,15 @@
 
 import type React from "react"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dumbbell } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import type { User } from "@/lib/auth"
+import { Dumbbell } from "lucide-react"
+import { useState } from "react"
 
 interface RegisterFormProps {
   onRegister: (user: User) => void
@@ -133,7 +133,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
 
       onRegister(user)
       window.location.assign(redirectTo)
-    } catch (err) {
+    } catch {
       setError("Error de conexión. Por favor intenta de nuevo.")
       setLoading(false)
     }

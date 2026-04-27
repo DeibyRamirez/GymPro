@@ -1,12 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
-import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button as UIButton } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dumbbell, LayoutDashboard, UserPlus } from "lucide-react"
+import { Dumbbell, UserPlus } from "lucide-react"
+import Link from "next/link"
 import { PortalAuthActions } from "./portal-auth-actions"
-
 interface GymPortalPageProps {
   slug: string
   gym: {
@@ -37,9 +36,9 @@ export function GymPortalPage({ slug, gym }: GymPortalPageProps) {
           </div>
           <div className="hidden gap-2 md:flex">
             <PortalAuthActions slug={slug} />
-            <Button asChild size="sm">
+            <UIButton asChild size="sm">
               <Link href={`/portal/${slug}/register`}><UserPlus className="mr-2 h-4 w-4" /> Registro</Link>
-            </Button>
+            </UIButton>
           </div>
         </div>
       </section>
@@ -106,9 +105,9 @@ export function GymPortalPage({ slug, gym }: GymPortalPageProps) {
         <div className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur">
           <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 px-4 py-3">
             <PortalAuthActions slug={slug} />
-            <Button asChild>
+            <UIButton asChild>
               <Link href={`/portal/${slug}/register`}>Registro</Link>
-            </Button>
+            </UIButton>
           </div>
         </div>
       </section>

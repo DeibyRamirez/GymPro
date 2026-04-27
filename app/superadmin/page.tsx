@@ -1,25 +1,22 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { UsersTable } from "@/components/admin/users-table"
 import { StatsCard } from "@/components/admin/stats-card"
-import { Crown, Dumbbell, Users, Warehouse } from "lucide-react"
+import { UsersTable } from "@/components/admin/users-table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { User } from "@/lib/auth"
+import { ArrowRight, Crown, Dumbbell, LayoutDashboard, Plus, ShieldCheck, Users, Warehouse } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useState } from "react"
 
 type GymItem = { id: string; name: string; slug: string; location: string; status: string; adminEmail?: string }
 
-// Página principal del superadmin, con gestión global de gimnasios, usuarios y estadísticas de la plataforma
 export default function SuperAdminPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [users, setUsers] = useState<Array<User & { trainerId?: string; isActive?: boolean; gymSlug?: string | null }>>([])
   const [gyms, setGyms] = useState<GymItem[]>([])
   const [gymName, setGymName] = useState("")
@@ -30,7 +27,6 @@ export default function SuperAdminPage() {
   const [gymAdminPassword, setGymAdminPassword] = useState("")
 
   useEffect(() => {
-    // Verifica la sesión del usuario y carga datos iniciales para el dashboard
     const load = async () => {
       const meRes = await fetch('/api/auth/me', { credentials: 'include' })
       const meData = await meRes.json()
@@ -39,8 +35,6 @@ export default function SuperAdminPage() {
         return
       }
 
-      // Si el usuario es superadmin, carga usuarios y gimnasios para mostrar en el dashboard
-      setCurrentUser(meData.user)
       const [usersRes, gymsRes] = await Promise.all([
         fetch('/api/users', { credentials: 'include' }),
         fetch('/api/gyms', { credentials: 'include' }),
@@ -51,11 +45,9 @@ export default function SuperAdminPage() {
       setGyms(gymsData.gyms || [])
       setLoading(false)
     }
-
     load()
   }, [router])
 
-  // Calcula estadísticas globales de la plataforma para mostrar en el dashboard del superadmin
   const stats = useMemo(() => ({
     totalUsers: users.length,
     totalGyms: gyms.length,
@@ -63,7 +55,6 @@ export default function SuperAdminPage() {
     superadmins: users.filter((user) => user.role === 'superadmin').length,
   }), [users, gyms])
 
-  // Función para crear un nuevo gimnasio (tenant) desde el dashboard del superadmin
   const createGym = async () => {
     await fetch('/api/gyms', {
       method: 'POST',
@@ -80,34 +71,26 @@ export default function SuperAdminPage() {
     })
   }
 
-  if (loading) return <div className="min-h-screen p-10">Cargando...</div>
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-background"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Badge variant="outline">Superadmin</Badge>
-            <h1 className="mt-2 text-3xl font-bold">Panel Global Saas GymPro</h1>
-            <p className="text-muted-foreground">Gestiona gimnasios, usuarios, planes e inventario de toda la plataforma.</p>
-          </div>
-            <Button
-            variant="outline"
-            onClick={async () => {
-              try {
-              await fetch("/api/auth/logout", {
-                method: "POST",
-                credentials: "include",
-              })
-              } finally {
-              router.replace("/login")
-              router.refresh()
-              }
-            }}
-            >
-            Cerrar sesión
+      <div className="mx-auto w-full max-w-7xl space-y-6 xl:px-2 2xl:px-4">
+        <section className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-background to-accent/10 p-6 shadow-sm md:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full border border-primary/10" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full border border-primary/10" />
+
+          <div className="relative flex flex-wrap items-start justify-between gap-6">
+            <div className="space-y-1">
+              <Badge variant="outline" className="gap-1.5 text-xs"><LayoutDashboard className="h-3 w-3" /> Superadmin</Badge>
+              <h1 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Panel Global Saas GymPro</h1>
+              <p className="max-w-2xl text-sm text-muted-foreground">Gestiona gimnasios, usuarios, planes e inventario de toda la plataforma.</p>
+            </div>
+            <Button variant="outline" onClick={async () => { try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }) } finally { router.replace('/login'); router.refresh() } }}>
+              <ShieldCheck className="mr-2 h-4 w-4" /> Cerrar sesión
             </Button>
-        </div>
+          </div>
+        </section>
 
         <div className="grid gap-4 md:grid-cols-4">
           <StatsCard title="Usuarios" value={stats.totalUsers} description="Total en el SaaS" icon={Users} />
@@ -117,7 +100,7 @@ export default function SuperAdminPage() {
         </div>
 
         <Tabs defaultValue="gyms">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="gyms">Gimnasios</TabsTrigger>
             <TabsTrigger value="users">Usuarios</TabsTrigger>
             <TabsTrigger value="inventory">Inventario</TabsTrigger>
@@ -131,26 +114,20 @@ export default function SuperAdminPage() {
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
                 <Input placeholder="Nombre" value={gymName} onChange={(e) => setGymName(e.target.value)} />
-                <Input placeholder="Slug" value={gymSlug} onChange={(e) => setGymSlug(e.target.value)} /> // El slug es el identificador único del gimnasio en la URL y debe ser único en toda la plataforma
+                <Input placeholder="Slug" value={gymSlug} onChange={(e) => setGymSlug(e.target.value)} />
                 <Input placeholder="Ubicación" value={gymLocation} onChange={(e) => setGymLocation(e.target.value)} />
                 <Input placeholder="Correo del gimnasio" value={gymEmail} onChange={(e) => setGymEmail(e.target.value)} />
                 <Input placeholder="Correo admin" value={gymAdminEmail} onChange={(e) => setGymAdminEmail(e.target.value)} />
                 <Input placeholder="Password admin" type="password" value={gymAdminPassword} onChange={(e) => setGymAdminPassword(e.target.value)} />
-                <Button className="md:col-span-2" onClick={createGym}>Crear gimnasio</Button>
+                <Button className="md:col-span-2" onClick={createGym}><Plus className="mr-2 h-4 w-4" /> Crear gimnasio</Button>
               </CardContent>
             </Card>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {gyms.map((gym) => (
                 <Card key={gym.id}>
-                  <CardHeader>
-                    <CardTitle>{gym.name}</CardTitle>
-                    <CardDescription>{gym.location}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex items-center justify-between">
-                    <Badge>{gym.status}</Badge>
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/portal/${gym.slug}/home`)}>Abrir portal</Button>
-                  </CardContent>
+                  <CardHeader><CardTitle>{gym.name}</CardTitle><CardDescription>{gym.location}</CardDescription></CardHeader>
+                  <CardContent className="flex items-center justify-between"><Badge>{gym.status}</Badge><Button variant="outline" size="sm" onClick={() => router.push(`/portal/${gym.slug}/home`)}>Abrir portal <ArrowRight className="ml-2 h-4 w-4" /></Button></CardContent>
                 </Card>
               ))}
             </div>
@@ -166,13 +143,8 @@ export default function SuperAdminPage() {
 
           <TabsContent value="inventory" className="mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Inventario global</CardTitle>
-                <CardDescription>Acceso a stock y ventas de todos los gimnasios.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Este módulo se conectará a vista global de productos y ventas.</p>
-              </CardContent>
+              <CardHeader><CardTitle>Inventario global</CardTitle><CardDescription>Acceso a stock y ventas de todos los gimnasios.</CardDescription></CardHeader>
+              <CardContent><p className="text-sm text-muted-foreground">Este módulo se conectará a vista global de productos y ventas.</p></CardContent>
             </Card>
           </TabsContent>
         </Tabs>

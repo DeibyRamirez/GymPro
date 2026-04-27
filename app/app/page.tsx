@@ -10,6 +10,28 @@ import { TrainerDashboard } from "@/components/trainer/trainer-dashboard"
 import { ClientDashboard } from "@/components/client/client-dashboard"
 import type { User } from "@/lib/auth"
 
+/**
+ * Página principal de la app que:
+ * - intenta restaurar la sesión (`/api/auth/me`),
+ * - muestra login/registro si no hay usuario,
+ * - redirige al dashboard de superadmin,
+ * - y renderiza el dashboard según el rol autenticado.
+ *
+ * También expone el flujo de logout, limpiando la sesión del backend y
+ * redirigiendo al login del gimnasio cuando aplica.
+ *
+ * @remarks
+ * Sobre `router` en el `useEffect`:
+ * - **Sí es correcto incluirlo** en el arreglo de dependencias para cumplir con
+ *   `react-hooks/exhaustive-deps`, porque se utiliza dentro del efecto.
+ * - En Next.js (`next/navigation`) normalmente `router` es estable, así que
+ *   incluirlo **no suele causar re-ejecuciones extra** relevantes.
+ * - Si se busca ejecutar el efecto estrictamente una sola vez al montar, puede
+ *   omitirse con criterio; aun así, mantenerlo en dependencias es la opción más
+ *   segura y clara desde reglas de hooks.
+ *
+ * @returns La vista de carga, autenticación o dashboard correspondiente al estado de sesión.
+ */
 export default function AppPage() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -35,7 +57,7 @@ export default function AppPage() {
     }
 
     loadSession()
-  }, [])
+  }, [router])
 
   const handleLogin = (user: User) => setCurrentUser(user)
   const handleRegister = (user: User) => setCurrentUser(user)

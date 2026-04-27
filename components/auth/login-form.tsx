@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User } from "@/lib/auth"
 import { Dumbbell } from "lucide-react"
+import { useState } from "react"
 
 interface LoginFormProps {
   onLogin: (user: User) => void
@@ -70,7 +70,7 @@ export function LoginForm({ onLogin, onSwitchToRegister, redirectTo = '/app', gy
 
       onLogin(user)
       window.location.assign(user.role === 'superadmin' ? '/superadmin' : redirectTo)
-    } catch (err) {
+    } catch {
       setError("Error de conexión. Por favor intenta de nuevo.")
       setLoading(false)
     }

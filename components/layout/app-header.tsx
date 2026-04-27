@@ -10,8 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Dumbbell, LogOut, Settings, UserIcon } from "lucide-react"
 import type { User } from "@/lib/auth"
+import { Dumbbell, LogOut, Settings, UserIcon } from "lucide-react"
 import { useState } from "react"
 
 interface AppHeaderProps {
@@ -20,6 +20,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ user, onLogout }: AppHeaderProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showProfile, setShowProfile] = useState(false)
   const roleLabels: Record<User["role"], string> = {
     superadmin: "Super Administrador",

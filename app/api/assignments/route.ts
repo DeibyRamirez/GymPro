@@ -8,6 +8,7 @@ import Exercise from '@/lib/models/Exercise';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-secret-key-cambiar-en-produccion';
+type ApiErrorLike = { message?: string; name?: string; errors?: Record<string, { message: string }> }
 
 // Función para verificar la autenticación del usuario a través del token JWT
 async function verifyAuth(req: NextRequest) {
@@ -44,12 +45,14 @@ export async function GET(req: NextRequest) {
       .populate('clientId', 'name email avatar role trainerId')
       .populate('trainerId', 'name email avatar role')
       .populate({ path: 'routineId', select: 'name description duration difficulty exercises tags createdBy isTemplate sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment instructions sets reps rest difficulty isTemplate sourceExerciseId' } })
-      .populate('mealPlanId', 'name description calories duration')
+      .populate('mealPlanId', 'name description calories duration meals')
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ assignments });
-  } catch {
-    return NextResponse.json({ error: 'Error al obtener asignaciones' }, { status: 500 });
+  } catch (error) {
+    console.error('Error al obtener asignaciones:', error);
+    const err = error as ApiErrorLike;
+    return NextResponse.json({ error: err.message || 'Error al obtener asignaciones' }, { status: 500 });
   }
 }
 
@@ -182,7 +185,17 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ assignment }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Error al crear asignación' }, { status: 500 });
+  } catch (error) {
+    console.error('Error al crear asignación:', error);
+    const err = error as ApiErrorLike;
+
+    if (err.name === 'ValidationError' && err.errors) {
+      return NextResponse.json(
+        { error: 'Error de validación', details: Object.values(err.errors).map((item) => item.message) },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ error: err.message || 'Error al crear asignación' }, { status: 500 });
   }
 }

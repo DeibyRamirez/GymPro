@@ -14,12 +14,13 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Check } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 interface AssignRoutineDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clientName: string
-  onAssign: (payload: { routineId: string; durationWeeks: number; weeklySchedule: Array<{ dayOfWeek: number; isRestDay: boolean; title?: string }> }) => void
+  onAssign: (payload: { routineId: string; durationWeeks: number; weeklySchedule: Array<{ dayOfWeek: number; isRestDay: boolean; title?: string }> }) => Promise<void> | void
 }
 
 type RoutineOption = {
@@ -40,12 +41,41 @@ export function AssignRoutineDialog({ open, onOpenChange, clientName, onAssign }
   useEffect(() => {
     if (!open) return
 
-    fetch('/api/routines?limit=100', { credentials: 'include' })
-      .then((res) => res.json())
-      .then((data) => setRoutines(data.routines || []))
+    let active = true
+
+    const loadRoutines = async () => {
+      try {
+        const res = await fetch('/api/routines?limit=100', { credentials: 'include' })
+        const data = await res.json().catch(() => null)
+
+        if (!res.ok) {
+          throw new Error(data?.error || 'No se pudieron cargar las rutinas')
+        }
+
+        if (active) {
+          setRoutines(data?.routines || [])
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'No se pudieron cargar las rutinas'
+        toast({
+          title: 'Error al cargar rutinas',
+          description: message,
+          variant: 'destructive',
+        })
+        if (active) {
+          setRoutines([])
+        }
+      }
+    }
+
+    loadRoutines()
+
+    return () => {
+      active = false
+    }
   }, [open])
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (selectedRoutine) {
       const weeklySchedule = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
         dayOfWeek,
@@ -53,13 +83,24 @@ export function AssignRoutineDialog({ open, onOpenChange, clientName, onAssign }
         title: activeDays.includes(dayOfWeek) ? "Entrenamiento" : "Descanso Activo",
       }))
 
-      onAssign({
-        routineId: selectedRoutine,
-        durationWeeks: Number(durationWeeks) || 4,
-        weeklySchedule,
-      })
-      onOpenChange(false)
-      setSelectedRoutine("")
+      try {
+        await Promise.resolve(
+          onAssign({
+            routineId: selectedRoutine,
+            durationWeeks: Number(durationWeeks) || 4,
+            weeklySchedule,
+          })
+        )
+        onOpenChange(false)
+        setSelectedRoutine("")
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'No se pudo asignar la rutina'
+        toast({
+          title: 'Error al asignar',
+          description: message,
+          variant: 'destructive',
+        })
+      }
     }
   }
 
