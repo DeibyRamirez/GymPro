@@ -3,6 +3,7 @@ import connectDB from "@/lib/mongodb";
 import MealPlan from "@/lib/models/MealPlan";
 import User from "@/lib/models/User";
 import jwt from "jsonwebtoken";
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   try {
     await connectDB();
     const user = await verifyAuth(req);
+    logApiRequest('/api/meal-plans/[id] GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, mealPlanId: id });
 
     const mealPlan = await MealPlan.findById(id).populate("createdBy", "name email");
 
@@ -50,7 +52,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     return NextResponse.json({ mealPlan });
   } catch (error) {
-    console.error("Error obteniendo plan alimenticio:", error);
+    logApiError('/api/meal-plans/[id] GET', error);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
@@ -61,6 +63,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   try {
     await connectDB();
     const user = await verifyAuth(req);
+    logApiRequest('/api/meal-plans/[id] PUT', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, mealPlanId: id });
 
     const mealPlan = await MealPlan.findById(id);
     if (!mealPlan) {
@@ -87,7 +90,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       mealPlan: updatedMealPlan,
     });
   } catch (error) {
-    console.error("Error actualizando plan alimenticio:", error);
+    logApiError('/api/meal-plans/[id] PUT', error);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
@@ -98,6 +101,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
   try {
     await connectDB();
     const user = await verifyAuth(req);
+    logApiRequest('/api/meal-plans/[id] DELETE', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, mealPlanId: id });
 
     const mealPlan = await MealPlan.findById(id);
     if (!mealPlan) {
@@ -115,7 +119,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
     return NextResponse.json({ message: "Plan alimenticio eliminado exitosamente" });
   } catch (error) {
-    console.error("Error eliminando plan alimenticio:", error);
+    logApiError('/api/meal-plans/[id] DELETE', error);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }

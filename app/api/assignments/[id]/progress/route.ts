@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Assignment from '@/lib/models/Assignment';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     await connectDB();
     const user = await verifyAuth(req);
     const { id } = await context.params;
+    logApiRequest('/api/assignments/[id]/progress POST', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, assignmentId: id });
 
     // Verificar que la asignación exista y que el usuario autenticado tenga permisos para actualizar su progreso,
     // lo que garantiza que solo los clientes asignados puedan actualizar su progreso, 
@@ -82,7 +84,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     return NextResponse.json({ message: 'Serie marcada como completada', assignment });
-  } catch {
+  } catch (error) {
+    logApiError('/api/assignments/[id]/progress POST', error);
     return NextResponse.json({ error: 'Error al actualizar el progreso' }, { status: 500 });
   }
 }

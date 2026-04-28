@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Users, Award, Scale } from "lucide-react"
 
 type ClientProgress = {
+  clientId?: string
   clientName: string
   clientEmail: string
   progressCount: number
@@ -18,7 +19,7 @@ type ClientProgress = {
 
 interface ClientProgressCardProps {
   clientProgress: ClientProgress[]
-  onOpenClient?: (clientEmail: string) => void
+  onOpenClient?: (clientId: string) => void
 }
 
 export function ClientProgressCard({ clientProgress, onOpenClient }: ClientProgressCardProps) {
@@ -49,7 +50,7 @@ export function ClientProgressCard({ clientProgress, onOpenClient }: ClientProgr
                 <span className="flex items-center gap-2"><Award className="h-4 w-4" />{client.latestMeasurement?.bodyFat !== undefined ? `${client.latestMeasurement.bodyFat}% grasa` : "Sin grasa"}</span>
               </div>
               <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => onOpenClient?.(client.clientEmail)}>
+                <Button variant="outline" size="sm" onClick={() => onOpenClient?.(client.clientId || client.clientEmail)}>
                   Ver progreso
                 </Button>
               </div>

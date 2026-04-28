@@ -2,9 +2,25 @@ export interface CalendarEvent {
   id: string
   title: string
   date: Date
-  type: "workout" | "meal" | "rest" | "assessment" | "class"
+  type: "workout" | "meal" | "rest" | "assessment" | "appointment" | "class"
   completed: boolean
   description?: string
+  source?: "assignment" | "calendar" | "manual"
+  routineId?: string
+  assignmentId?: string
+  trainerId?: string
+  mealPlanId?: string
+  capacity?: number
+  bookedCount?: number
+  gymId?: string
+  exercises?: Array<{
+    name: string
+    sets?: number
+    reps?: string
+    rest?: string
+    instructions?: string
+  }>
+  metadata?: Record<string, unknown>
 }
 
 export const mockCalendarEvents: CalendarEvent[] = [

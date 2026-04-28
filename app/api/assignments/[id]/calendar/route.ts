@@ -3,6 +3,7 @@ import User from '@/lib/models/User';
 import connectDB from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -24,6 +25,16 @@ function getEventType(isRestDay: boolean) {
   return isRestDay ? 'rest' : 'workout'
 }
 
+function normalizeExercises(routine: { exercises?: Array<{ exercise?: { name?: string }; sets?: number; reps?: string; rest?: string; instructions?: string }> } | null) {
+  return (routine?.exercises || []).map((exercise, index) => ({
+    name: exercise.exercise?.name || `Ejercicio ${index + 1}`,
+    sets: exercise.sets,
+    reps: exercise.reps,
+    rest: exercise.rest,
+    instructions: exercise.instructions,
+  }))
+}
+
 // Definición de los filtros que se pueden aplicar al obtener las asignaciones
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -33,13 +44,20 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const { searchParams } = new URL(req.url);
     const monthParam = searchParams.get('month');
     const referenceDate = monthParam ? new Date(monthParam) : new Date();
+    logApiRequest('/api/assignments/[id]/calendar GET', {
+      userId: user._id.toString(),
+      role: user.role,
+      gymId: user.gymId?.toString() || null,
+      assignmentId: id,
+      month: monthParam,
+    });
 
     // Obtener la asignación específica por su ID, y poblar los campos relacionados para obtener la información completa
     // de la asignación, incluyendo detalles del cliente, entrenador, rutina y plan alimenticio asociados, lo que permite al cliente 
     // o entrenador ver la información detallada de la asignación, 
     // y proyectar el calendario correspondiente con los eventos programados para cada día dentro del período de la asignación.
     const assignment = await Assignment.findById(id)
-      .populate({ path: 'routineId', select: 'name description duration difficulty exercises trainingDaysPerWeek' })
+      .populate({ path: 'routineId', select: 'name description duration difficulty exercises trainingDaysPerWeek', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment' } })
       .populate('mealPlanId', 'name description calories duration meals');
 
     // Validar que la asignación exista, que pertenezca al mismo gimnasio que el usuario autenticado, 
@@ -96,6 +114,15 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         mealPlan: scheduleItem?.mealPlanId ? assignment.mealPlanId : assignment.mealPlanId,
         title: scheduleItem?.title || (isRestDay ? 'Descanso Activo' : 'Plan del Día'),
         notes: scheduleItem?.notes || '',
+        source: 'assignment',
+        assignmentId: assignment._id.toString(),
+        trainerId: assignment.trainerId.toString(),
+        gymId: assignment.gymId?.toString?.() || null,
+        exercises: !isRestDay ? normalizeExercises((assignment.routineId as unknown as { exercises?: Array<{ exercise?: { name?: string }; sets?: number; reps?: string; rest?: string; instructions?: string }> }) || null) : [],
+        metadata: {
+          weeklySchedule: scheduleItem || null,
+          routineName: assignment.routineId && typeof assignment.routineId === 'object' && 'name' in assignment.routineId ? (assignment.routineId as { name?: string }).name : null,
+        },
       });
     }
 
@@ -113,7 +140,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       calendario: days,
       events: days,
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/assignments/[id]/calendar GET', error);
     return NextResponse.json({ error: 'Error al proyectar calendario' }, { status: 500 });
   }
 }

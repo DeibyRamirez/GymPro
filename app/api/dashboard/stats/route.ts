@@ -6,6 +6,7 @@ import CalendarEvent from '@/lib/models/CalendarEvent';
 import Routine from '@/lib/models/Routine';
 import MealPlan from '@/lib/models/MealPlan';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const user = await verifyAuth(req);
+    logApiRequest('/api/dashboard/stats GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null });
 
     let stats: Record<string, unknown> = {};
 
@@ -158,7 +160,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ stats });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas del dashboard:', error);
+    logApiError('/api/dashboard/stats GET', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -228,6 +230,7 @@ async function getClientProgressData(trainerId: string, gymId: string | null) {
     },
     {
       $project: {
+        clientId: '$client._id',
         clientName: '$client.name',
         clientEmail: '$client.email',
         progressCount: { $size: '$measurements' },

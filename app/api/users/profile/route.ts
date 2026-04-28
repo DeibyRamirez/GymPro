@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const user = await verifyAuth(req);
+    logApiRequest('/api/users/profile GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null });
 
     const userResponse: Record<string, unknown> = {
       id: user._id.toString(),
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ user: userResponse });
 
   } catch (error: unknown) {
-    console.error('Error obteniendo perfil:', error);
+    logApiError('/api/users/profile GET', error);
     const message = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
       { error: 'Error al obtener perfil', details: message },
@@ -66,6 +68,7 @@ export async function PUT(req: NextRequest) {
   try {
     await connectDB();
     const user = await verifyAuth(req);
+    logApiRequest('/api/users/profile PUT', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null });
 
     const body = await req.json();
     const {
@@ -138,7 +141,7 @@ export async function PUT(req: NextRequest) {
     });
 
   } catch (error: unknown) {
-    console.error('Error actualizando perfil:', error);
+    logApiError('/api/users/profile PUT', error);
 
     const validationError = error as { name?: string; errors?: Record<string, { message: string }> };
     if (validationError.name === 'ValidationError' && validationError.errors) {

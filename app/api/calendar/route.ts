@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -33,8 +34,14 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const user = await verifyAuth(req);
-
     const { searchParams } = new URL(req.url);
+    logApiRequest('/api/calendar GET', {
+      userId: user._id.toString(),
+      role: user.role,
+      gymId: user.gymId?.toString() || null,
+      query: Object.fromEntries(searchParams.entries()),
+    });
+
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const type = searchParams.get('type');
@@ -53,8 +60,11 @@ export async function GET(req: NextRequest) {
     } else if (user.role === 'admin') {
       // Los admins ven todos los eventos (sin filtro de usuario)
     } else {
-      // Los clientes solo ven sus propios eventos
-      filters.userId = user._id;
+      // Los clientes ven sus propios eventos y las clases grupales del gimnasio
+      filters.$or = [
+        { userId: user._id },
+        { type: 'class', gymId: user.gymId || null },
+      ];
     }
 
     if (user.gymId) {
@@ -92,7 +102,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ events });
 
   } catch (error) {
-    console.error('Error obteniendo eventos del calendario:', error);
+    logApiError('/api/calendar GET', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -120,8 +130,16 @@ export async function POST(req: NextRequest) {
       capacity,
       attendanceCode,
       duration,
-      reminder
+      reminder,
+      source
     } = data;
+
+    logApiRequest('/api/calendar POST', {
+      userId: user._id.toString(),
+      role: user.role,
+      gymId: user.gymId?.toString() || null,
+      payload: { title, description, date, type, userId, trainerId, routineId, mealPlanId, assignmentId, capacity, attendanceCode, duration, source },
+    });
 
     // Validar datos requeridos
     if (!title || !date || !type) {
@@ -137,14 +155,16 @@ export async function POST(req: NextRequest) {
       eventUserId = user._id; // Por defecto, el evento es para el usuario actual
     }
 
+    const isPrivateClientEvent = user.role === 'client' && String(eventUserId) === String(user._id);
+    if (user.role === 'client' && !isPrivateClientEvent) {
+      return NextResponse.json(
+        { error: 'No tienes permisos para crear eventos para otros usuarios' },
+        { status: 403 }
+      );
+    }
+
     // Verificar permisos para crear eventos para otros usuarios
-    if (eventUserId !== user._id.toString()) {
-      if (user.role === 'client') {
-        return NextResponse.json(
-          { error: 'No tienes permisos para crear eventos para otros usuarios' },
-          { status: 403 }
-        );
-      }
+    if (String(eventUserId) !== String(user._id)) {
       
       // Verificar que el usuario objetivo existe
       const targetUser = await User.findById(eventUserId);
@@ -172,7 +192,8 @@ export async function POST(req: NextRequest) {
       bookedCount: 0,
       attendanceCode: attendanceCode || null,
       duration: duration || null,
-      reminder: reminder || { enabled: false }
+      reminder: reminder || { enabled: false },
+      source: isPrivateClientEvent ? 'manual' : source || 'calendar',
     });
 
     await event.save();
@@ -181,16 +202,31 @@ export async function POST(req: NextRequest) {
     const createdEvent = await CalendarEvent.findById(event._id)
       .populate('userId', 'name email')
       .populate('trainerId', 'name email')
-      .populate('routineId', 'name description')
+      .populate({ path: 'routineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment' } })
       .populate('mealPlanId', 'name description');
+
+    if (!createdEvent) {
+      return NextResponse.json({ error: 'No se pudo crear el evento' }, { status: 500 });
+    }
 
     return NextResponse.json({
       message: 'Evento creado exitosamente',
-      event: createdEvent
+      event: {
+        ...createdEvent.toObject(),
+        exercises: Array.isArray((createdEvent.routineId as unknown as { exercises?: Array<{ exercise?: { name?: string }; sets?: number; reps?: string; rest?: string; instructions?: string }> } | undefined)?.exercises)
+          ? (createdEvent.routineId as unknown as { exercises?: Array<{ exercise?: { name?: string }; sets?: number; reps?: string; rest?: string; instructions?: string }> }).exercises?.map((exercise, index) => ({
+              name: exercise.exercise?.name || `Ejercicio ${index + 1}`,
+              sets: exercise.sets,
+              reps: exercise.reps,
+              rest: exercise.rest,
+              instructions: exercise.instructions,
+            }))
+          : [],
+      }
     }, { status: 201 });
 
   } catch (error: unknown) {
-    console.error('Error creando evento:', error);
+    logApiError('/api/calendar POST', error);
 
     const validationError = error as ValidationErrorLike;
     if (validationError.name === 'ValidationError' && validationError.errors) {

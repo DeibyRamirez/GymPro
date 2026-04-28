@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Gym from '@/lib/models/Gym';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q')?.trim().toLowerCase() || '';
+    logApiRequest('/api/gyms GET', { query });
 
     const gyms = await Gym.find({ status: { $ne: 'suspended' } }).sort({ createdAt: -1 });
     const filteredGyms = query
@@ -59,7 +61,8 @@ export async function GET(req: NextRequest) {
         products: gym.products,
       })),
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/gyms GET', error);
     return NextResponse.json({ error: 'Error al obtener gimnasios' }, { status: 500 });
   }
 }
@@ -79,6 +82,7 @@ export async function POST(req: NextRequest) {
     const hours = String(body.hours || '').trim();
     const rawSlug = String(body.slug || name);
     const slug = slugify(rawSlug);
+    logApiRequest('/api/gyms POST', { name, location, email, adminEmail, slug });
 
     if (!name || !location || !email || !adminEmail || !adminPassword) {
       return NextResponse.json({ error: 'Nombre, ubicación, correo de contacto, correo admin y contraseña admin son requeridos' }, { status: 400 });
@@ -138,7 +142,8 @@ export async function POST(req: NextRequest) {
     await adminUser.save();
 
     return NextResponse.json({ gym }, { status: 201 });
-  } catch {
+  } catch (error) {
+    logApiError('/api/gyms POST', error);
     return NextResponse.json({ error: 'Error al crear gimnasio' }, { status: 500 });
   }
 }
@@ -153,6 +158,7 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
     const { slug, ...update } = body;
+    logApiRequest('/api/gyms PUT', { currentUserId: currentUser._id.toString(), role: currentUser.role, slug, keys: Object.keys(update || {}) });
     if (!slug) {
       return NextResponse.json({ error: 'El slug del gimnasio es requerido' }, { status: 400 });
     }
@@ -163,7 +169,8 @@ export async function PUT(req: NextRequest) {
     }
 
     return NextResponse.json({ gym });
-  } catch {
+  } catch (error) {
+    logApiError('/api/gyms PUT', error);
     return NextResponse.json({ error: 'Error al actualizar gimnasio' }, { status: 500 });
   }
 }
@@ -178,6 +185,7 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug');
+    logApiRequest('/api/gyms DELETE', { currentUserId: currentUser._id.toString(), role: currentUser.role, slug });
     if (!slug) {
       return NextResponse.json({ error: 'El slug del gimnasio es requerido' }, { status: 400 });
     }
@@ -188,7 +196,8 @@ export async function DELETE(req: NextRequest) {
     }
 
     return NextResponse.json({ message: 'Gimnasio eliminado correctamente' });
-  } catch {
+  } catch (error) {
+    logApiError('/api/gyms DELETE', error);
     return NextResponse.json({ error: 'Error al eliminar gimnasio' }, { status: 500 });
   }
 }

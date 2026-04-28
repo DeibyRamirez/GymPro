@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { ClientCard } from "./client-card"
 import { AssignRoutineDialog } from "./assign-routine-dialog"
 import { AssignMealPlanDialog } from "./assign-meal-plan-dialog"
@@ -15,12 +16,13 @@ interface ClientsViewProps {
 }
 
 export function ClientsView({ trainerId }: ClientsViewProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [selectedClient, setSelectedClient] = useState<User | null>(null)
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false)
   const [mealPlanDialogOpen, setMealPlanDialogOpen] = useState(false)
-  const [clients, setClients] = useState<User[]>([])
+  const [clients, setClients] = useState<(User & { gymSlug?: string | null })[]>([])
   const [assignments, setAssignments] = useState<Array<{ clientId?: { _id?: string; id?: string } | string; routineId?: string; mealPlanId?: string }>>([])
 
   useEffect(() => {
@@ -219,7 +221,10 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
                 hasMealPlan={!!assignment?.mealPlanId}
                 onAssignRoutine={() => handleAssignRoutine(client)}
                 onAssignMealPlan={() => handleAssignMealPlan(client)}
-                onViewDetails={() => console.log("Ver detalles", client.id)}
+                onViewDetails={() => {
+                  if (!client.gymSlug) return
+                  router.push(`/portal/${client.gymSlug}/clients/${client.id}`)
+                }}
               />
             )
           })}

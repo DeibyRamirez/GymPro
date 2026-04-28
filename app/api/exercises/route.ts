@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Exercise from '@/lib/models/Exercise';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const search = searchParams.get('search') || '';
     const muscleGroup = searchParams.get('muscleGroup') || '';
+    logApiRequest('/api/exercises GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, query: { page, limit, search, muscleGroup } });
 
     // Construir filtros
     const filters: Record<string, unknown> = user.gymId ? { gymId: user.gymId } : { gymId: null };
@@ -70,7 +72,7 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error obteniendo ejercicios:', error);
+    logApiError('/api/exercises GET', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
@@ -87,6 +89,7 @@ export async function POST(req: NextRequest) {
     // Todos los usuarios autenticados pueden crear ejercicios
     const data = await req.json();
     const { name, sets, reps, rest, image, instructions, muscleGroups, equipment, difficulty } = data;
+    logApiRequest('/api/exercises POST', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, name, sets, reps, rest, difficulty, muscleGroupsCount: Array.isArray(muscleGroups) ? muscleGroups.length : 0 });
 
     // Validar datos requeridos
     if (!name || !sets || !reps || !rest || !instructions || !muscleGroups) {
@@ -131,7 +134,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
 
   } catch (error: unknown) {
-    console.error('Error creando ejercicio:', error);
+    logApiError('/api/exercises POST', error);
 
     const validationError = error as { name?: string; errors?: Record<string, { message: string }> };
     if (validationError.name === 'ValidationError' && validationError.errors) {

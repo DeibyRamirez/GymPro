@@ -32,6 +32,11 @@ const eventTypeConfig = {
     color: "bg-chart-4/10 text-chart-4",
     label: "Evaluación",
   },
+  appointment: {
+    icon: CalendarDays,
+    color: "bg-violet-500/10 text-violet-700",
+    label: "Evento privado",
+  },
   class: {
     icon: Users,
     color: "bg-violet-500/10 text-violet-700",
@@ -79,9 +84,9 @@ export function UpcomingEvents({ events, onToggleComplete, onDelete }: UpcomingE
                   event.completed ? "bg-muted/50 opacity-60" : "bg-card",
                 )}
               >
-                <div className={cn("p-2 rounded-lg", config.color)}>
-                  <Icon className="h-4 w-4" />
-                </div>
+                  <div className={cn("p-2 rounded-lg", config.color)}>
+                    <Icon className="h-4 w-4" />
+                  </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
@@ -103,12 +108,16 @@ export function UpcomingEvents({ events, onToggleComplete, onDelete }: UpcomingE
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
-                    <Button size="sm" variant="outline" onClick={() => onToggleComplete?.(event.id, !event.completed)}>
-                      {event.completed ? 'Marcar pendiente' : 'Completar'}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete?.(event.id)}>
-                      Eliminar
-                    </Button>
+                    {onToggleComplete && (
+                      <Button size="sm" variant="outline" onClick={() => onToggleComplete(event.id, !event.completed)}>
+                        {event.completed ? 'Marcar pendiente' : 'Completar'}
+                      </Button>
+                    )}
+                    {onDelete && (
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete(event.id)}>
+                        Eliminar
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

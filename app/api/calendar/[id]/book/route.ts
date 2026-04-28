@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -20,6 +21,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     await connectDB();
     const user = await verifyAuth(req);
     const { id } = await context.params;
+    logApiRequest('/api/calendar/[id]/book POST', {
+      userId: user._id.toString(),
+      role: user.role,
+      gymId: user.gymId?.toString() || null,
+      eventId: id,
+    });
 
     const event = await CalendarEvent.findById(id);
     if (!event) return NextResponse.json({ error: 'Evento no encontrado' }, { status: 404 });
@@ -36,7 +43,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     await event.save();
 
     return NextResponse.json({ message: 'Reserva confirmada', event });
-  } catch {
+  } catch (error) {
+    logApiError('/api/calendar/[id]/book POST', error);
     return NextResponse.json({ error: 'Error al reservar cupo' }, { status: 500 });
   }
 }

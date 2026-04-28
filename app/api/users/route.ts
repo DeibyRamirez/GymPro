@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import Gym from '@/lib/models/Gym';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 // Middleware para verificar autenticación y obtener el usuario actual
@@ -36,6 +37,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const role = searchParams.get('role');
     const trainerId = searchParams.get('trainerId');
+    logApiRequest('/api/users GET', {
+      currentUserId: currentUser._id.toString(),
+      role: currentUser.role,
+      gymId: currentUser.gymId?.toString() || null,
+      query: { role, trainerId },
+    });
 
     const filters: UsersFilters = { isActive: true };
 
@@ -69,7 +76,8 @@ export async function GET(req: NextRequest) {
         isActive: user.isActive,
       })),
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/users GET', error);
     return NextResponse.json({ error: 'Error al obtener usuarios' }, { status: 500 });
   }
 }

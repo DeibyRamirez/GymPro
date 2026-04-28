@@ -43,7 +43,7 @@ export function GroupClassesPanel({ trainerId }: { trainerId: string }) {
       credentials: 'include',
       body: JSON.stringify({
         title,
-        date,
+        date: new Date(date).toISOString(),
         type: 'class',
         capacity: Number(capacity),
         attendanceCode,
@@ -94,7 +94,7 @@ export function GroupClassesPanel({ trainerId }: { trainerId: string }) {
               </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p>{new Date(item.date).toLocaleString()}</p>
+              <p>{new Date(item.date).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })}</p>
               <p>Cupos: {item.bookedCount || 0}/{item.capacity || 0}</p>
               <p className="text-muted-foreground">Código: {item.attendanceCode || 'N/A'}</p>
             </CardContent>

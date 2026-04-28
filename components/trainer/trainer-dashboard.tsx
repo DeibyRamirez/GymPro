@@ -3,12 +3,14 @@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { useRouter } from "next/navigation"
 import { BarChart3, Dumbbell, LayoutDashboard, Users, UtensilsCrossed } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ClientProgressCard } from "./client-progress-card"
 import { ClientsView } from "./clients-view"
 import { GroupClassesPanel } from "./group-classes-panel"
 import { MealPlansLibrary } from "./meal-plans-library"
+import { TrainerInbox } from "./trainer-inbox"
 import { RoutinesLibrary } from "./routines-library"
 
 
@@ -17,6 +19,7 @@ interface TrainerDashboardProps {
 }
 
 type ClientProgressItem = {
+  clientId?: string
   clientName: string
   clientEmail: string
   progressCount: number
@@ -59,10 +62,12 @@ function NavAction({ icon: Icon, label, onClick, accent }: { icon: React.Element
 // }
 
 export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("clients")
   const [stats, setStats] = useState<TrainerStats | null>(null)
   const [clientProgress, setClientProgress] = useState<ClientProgressItem[]>([])
   const [loading, setLoading] = useState(true)
+  const portalSlug = typeof window !== "undefined" ? window.location.pathname.split('/')[2] : ''
 
   useEffect(() => {
     let mounted = true
@@ -123,7 +128,15 @@ export function TrainerDashboard({ trainerId }: TrainerDashboardProps) {
         <MiniMetric label="Progreso reciente" value={clientProgress.length} icon={Activity} accent="text-amber-600" />
       </section> */}
 
-      <ClientProgressCard clientProgress={clientProgress} />
+      <ClientProgressCard
+        clientProgress={clientProgress}
+        onOpenClient={(clientId) => {
+          const client = clientProgress.find((item) => item.clientId === clientId || item.clientEmail === clientId)
+          if (!client?.clientId) return
+          router.push(`/portal/${portalSlug}/clients/${client.clientId}`)
+        }}
+      />
+      <TrainerInbox trainerId={trainerId} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* <TabsList className="grid h-auto w-full grid-cols-4 p-1">

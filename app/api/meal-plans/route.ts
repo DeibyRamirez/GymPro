@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import MealPlan from '@/lib/models/MealPlan';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const difficulty = searchParams.get('difficulty') || '';
+    logApiRequest('/api/meal-plans GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, query: { page, limit, search, difficulty } });
 
     // Construir filtros
     const filters: Record<string, unknown> = {};
@@ -95,7 +97,7 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error obteniendo planes alimenticios:', error);
+    logApiError('/api/meal-plans GET', error);
     const err = error as ApiErrorLike;
     return NextResponse.json(
       { error: err.message || 'Error interno del servidor' },
@@ -120,6 +122,7 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json();
     const { name, description, calories, meals, duration, tags } = data;
+    logApiRequest('/api/meal-plans POST', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, name, calories, duration, mealsCount: Array.isArray(meals) ? meals.length : 0 });
 
     // Validar datos requeridos
     if (!name || !description || !calories || !meals || !duration) {
@@ -161,7 +164,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
 
   } catch (error: unknown) {
-    console.error('Error creando plan alimenticio:', error);
+    logApiError('/api/meal-plans POST', error);
 
     const validationError = error as ValidationErrorLike;
     if (validationError.name === 'ValidationError' && validationError.errors) {

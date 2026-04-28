@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import Gym from '@/lib/models/Gym';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
+    logApiRequest('/api/auth/me GET', { hasToken: !!token });
 
     if (!token) {
       return NextResponse.json({ user: null }, { status: 401 });
@@ -37,7 +39,8 @@ export async function GET(req: NextRequest) {
         gymName: gym?.name || null,
       },
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/auth/me GET', error);
     return NextResponse.json({ user: null }, { status: 401 });
   }
 }

@@ -8,6 +8,7 @@ export interface ICalendarEvent extends Document {
   date: Date;
   type: 'workout' | 'meal' | 'rest' | 'assessment' | 'appointment' | 'reminder' | 'class';
   completed: boolean;
+  source?: 'assignment' | 'calendar' | 'manual';
   userId: mongoose.Types.ObjectId;
   gymId?: mongoose.Types.ObjectId | null;
   trainerId?: mongoose.Types.ObjectId;
@@ -53,6 +54,11 @@ const CalendarEventSchema = new Schema<ICalendarEvent>({
   completed: {
     type: Boolean,
     default: false
+  },
+  source: {
+    type: String,
+    enum: ['assignment', 'calendar', 'manual'],
+    default: 'calendar'
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,

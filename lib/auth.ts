@@ -10,6 +10,14 @@ export interface User {
   gymId?: string
   gymSlug?: string | null
   gymName?: string | null
+  age?: number
+  weight?: number
+  height?: number
+  gender?: string
+  phone?: string
+  goal?: string
+  activityLevel?: string
+  medicalConditions?: string
 }
 
 // Simulación de usuarios para demostración

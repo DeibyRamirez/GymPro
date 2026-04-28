@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Gym from '@/lib/models/Gym';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ slug: s
   try {
     await connectDB();
     const { slug } = await context.params;
+    logApiRequest('/api/gyms/[slug] GET', { slug });
     const gym = await Gym.findOne({ slug, status: { $ne: 'suspended' } });
 
     if (!gym) {
@@ -48,7 +50,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ slug: s
         products: gym.products,
       },
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/gyms/[slug] GET', error);
     return NextResponse.json({ error: 'Error al obtener gimnasio' }, { status: 500 });
   }
 }
@@ -63,6 +66,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ slug: s
 
     const { slug } = await context.params;
     const body = await req.json();
+    logApiRequest('/api/gyms/[slug] PUT', { currentUserId: currentUser._id.toString(), role: currentUser.role, slug, keys: Object.keys(body || {}) });
     const gym = await Gym.findOneAndUpdate({ slug }, body, { new: true });
 
     if (!gym) {
@@ -70,7 +74,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ slug: s
     }
 
     return NextResponse.json({ gym });
-  } catch {
+  } catch (error) {
+    logApiError('/api/gyms/[slug] PUT', error);
     return NextResponse.json({ error: 'Error al actualizar gimnasio' }, { status: 500 });
   }
 }
@@ -85,13 +90,15 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ slug
 
     const { slug } = await context.params;
     const gym = await Gym.findOneAndDelete({ slug });
+    logApiRequest('/api/gyms/[slug] DELETE', { currentUserId: currentUser._id.toString(), role: currentUser.role, slug });
 
     if (!gym) {
       return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Gimnasio eliminado correctamente' });
-  } catch {
+  } catch (error) {
+    logApiError('/api/gyms/[slug] DELETE', error);
     return NextResponse.json({ error: 'Error al eliminar gimnasio' }, { status: 500 });
   }
 }

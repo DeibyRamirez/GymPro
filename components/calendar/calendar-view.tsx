@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -33,6 +33,11 @@ const eventTypeConfig = {
     color: "bg-chart-4/10 text-chart-4 border-chart-4/20",
     label: "Evaluación",
   },
+  appointment: {
+    icon: CalendarDays,
+    color: "bg-violet-500/10 text-violet-700 border-violet-200",
+    label: "Evento privado",
+  },
   class: {
     icon: Users,
     color: "bg-violet-500/10 text-violet-700 border-violet-200",
@@ -42,6 +47,7 @@ const eventTypeConfig = {
 
 export function CalendarView({ events }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(() => new Date())
 
   const monthNames = [
     "Enero",
@@ -88,6 +94,15 @@ export function CalendarView({ events }: CalendarViewProps) {
     })
   }
 
+  const selectedDayEvents = useMemo(() => {
+    return events
+      .filter((event) => {
+        const eventDate = new Date(event.date)
+        return eventDate.getDate() === selectedDate.getDate() && eventDate.getMonth() === selectedDate.getMonth() && eventDate.getFullYear() === selectedDate.getFullYear()
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  }, [events, selectedDate])
+
   const isToday = (day: number) => {
     const today = new Date()
     return day === today.getDate() && month === today.getMonth() && year === today.getFullYear()
@@ -105,9 +120,13 @@ export function CalendarView({ events }: CalendarViewProps) {
     days.push(
       <div
         key={day}
+        role="button"
+        tabIndex={0}
+        onClick={() => setSelectedDate(new Date(year, month, day))}
         className={cn(
-          "aspect-square border rounded-lg p-2 hover:bg-accent/5 transition-colors",
+          "aspect-square border rounded-lg p-2 hover:bg-accent/5 transition-colors cursor-pointer",
           today && "border-primary bg-primary/5",
+          selectedDate.getDate() === day && selectedDate.getMonth() === month && selectedDate.getFullYear() === year && "ring-2 ring-primary ring-offset-1",
         )}
       >
         <div className="flex flex-col h-full">
@@ -183,6 +202,33 @@ export function CalendarView({ events }: CalendarViewProps) {
             })}
           </div>
         </div>
+      </CardContent>
+      <CardContent className="border-t pt-4">
+        <h4 className="text-sm font-semibold mb-3">Detalle del día seleccionado</h4>
+        {selectedDayEvents.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay eventos en este día.</p>
+        ) : (
+          <div className="space-y-2">
+            {selectedDayEvents.map((event) => {
+              const config = eventTypeConfig[event.type]
+              const Icon = config.icon
+              return (
+                <div key={event.id} className="rounded-lg border p-3">
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className={cn("text-xs", config.color)}>
+                      <Icon className="h-3 w-3 mr-1" />
+                      {config.label}
+                    </Badge>
+                    <div>
+                      <p className="font-medium text-sm">{event.title}</p>
+                      {event.description && <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

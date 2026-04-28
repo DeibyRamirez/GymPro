@@ -1,168 +1,204 @@
-# GymPro
+# Gym Pro
 
-Sistema web para gestion de gimnasio, entrenadores y clientes.
+Plataforma SaaS para gestión de gimnasios con arquitectura basada en `Next.js` App Router, `MongoDB` y control de acceso por roles.
 
-## Problema que resuelve
+## Resumen técnico
 
-GymPro centraliza la operacion de un gimnasio en un solo lugar:
+Gym Pro centraliza la operación de un gimnasio en una sola aplicación web con cuatro perfiles funcionales:
 
-- Evita el uso de Excel, WhatsApp y notas sueltas para controlar clientes.
-- Da trazabilidad a rutinas, planes alimenticios, progreso y eventos.
-- Permite a administradores, entrenadores y clientes trabajar con una sola fuente de verdad.
-- Reduce errores en asignaciones, seguimiento y comunicacion.
+- `superadmin`: administración global de la plataforma.
+- `admin`: operación del gimnasio y gestión de usuarios.
+- `trainer`: administración de clientes, rutinas, planes y clases.
+- `client`: consumo de rutinas, calendario, progreso y eventos personales.
 
-## Propuesta de valor
-
-Este sistema se puede vender a un gimnasio porque permite:
-
-- Controlar usuarios por rol: admin, trainer y client.
-- Asignar rutinas y planes alimenticios.
-- Consultar estadisticas de operacion.
-- Registrar eventos de calendario y seguimiento.
-- Mantener el historial de progreso del cliente.
-
-## Estado actual del proyecto
-
-El proyecto ya tiene una base tecnica funcional, pero aun se comporta mas como demo que como producto final.
-
-### Ya existe
-
-- Login y registro en la interfaz.
-- Dashboards separados por rol.
-- Modelos en MongoDB para usuarios, rutinas, planes, ejercicios, eventos y asignaciones.
-- Endpoint de estadisticas del dashboard.
-- Autenticacion basada en JWT para el backend.
-
-### Falta o esta incompleto
-
-- CRUD real para rutinas, planes, ejercicios, eventos y asignaciones.
-- Flujo completo de autenticacion unificado entre frontend y backend.
-- Control real de permisos por rol.
-- Persistencia consistente de sesiones y tokens.
-- Edicion de perfil, progreso y medidas corporales.
-- Seguimiento de asistencia, pagos y membresias.
-- Notificaciones y recordatorios reales.
-- Reportes exportables.
-- Validaciones de negocio mas estrictas.
-
-## Funcionalidad
-
-### Administrador
-
-- Ver usuarios activos.
-- Ver metricas generales.
-- Administrar trainers y clients.
-- Revisar actividad general.
-
-### Entrenador
-
-- Ver clientes asignados.
-- Crear y editar rutinas.
-- Crear y editar planes alimenticios.
-- Asignar contenido a clientes.
-- Revisar progreso y eventos.
-
-### Cliente
-
-- Ver su entrenador.
-- Ver rutina asignada.
-- Ver plan alimenticio asignado.
-- Consultar calendario.
-- Revisar avance general.
-- Actualizar perfil y datos basicos.
+La aplicación combina frontend en React con backend interno vía Route Handlers, persistiendo datos en MongoDB mediante Mongoose.
 
 ## Arquitectura
 
 ### Frontend
 
-- `Next.js` con App Router.
+- `Next.js 16` con App Router.
 - `React 19`.
-- Componentes reutilizables en `components/`.
-- UI basada en componentes tipo shadcn/Radix.
+- Componentes reutilizables bajo `components/`.
+- UI construida con patrones tipo `shadcn/ui` y `Radix UI`.
+- Paneles separados por rol y vistas específicas para rutinas, progreso, mensajes, calendario y reportes.
 
 ### Backend
 
 - Route Handlers en `app/api`.
-- Autenticacion con `jsonwebtoken`.
-- Persistencia con `mongoose`.
-- Modelos en `lib/models`.
+- Autenticación basada en JWT.
+- Persistencia con `Mongoose`.
+- Validación de permisos por rol en endpoints críticos.
+- Respuestas JSON normalizadas para consumo directo desde el frontend.
 
 ### Persistencia
 
-- MongoDB para usuarios, rutinas, planes, ejercicios, eventos y asignaciones.
+- MongoDB como base de datos principal.
+- Colecciones principales para:
+  - usuarios
+  - gimnasios
+  - rutinas
+  - ejercicios
+  - planes alimenticios
+  - asignaciones
+  - eventos de calendario
+
+## Funcionalidad actual
+
+### Superadmin
+
+- Visión global del sistema.
+- Acceso a métricas administrativas.
+- Administración de gimnasios y operación general.
+
+### Admin
+
+- Gestión de usuarios del gimnasio.
+- Supervisión de trainers y clientes.
+- Acceso a estadísticas operativas.
+- Control de catálogo y estructura del gimnasio.
+
+### Trainer
+
+- Gestión de clientes asignados.
+- Creación y mantenimiento de rutinas.
+- Creación y mantenimiento de planes alimenticios.
+- Asignación de contenido a clientes.
+- Creación de clases grupales.
+- Seguimiento de progreso y calendario.
+
+### Client
+
+- Visualización de entrenador asignado.
+- Consulta de rutina y plan alimenticio.
+- Calendario con:
+  - días de entrenamiento
+  - días de descanso
+  - clases grupales del gimnasio
+  - eventos privados del cliente
+- Registro de eventos privados en su propio calendario.
+- Consulta de progreso y datos de perfil.
+
+## Calendario
+
+El módulo de calendario soporta múltiples fuentes de eventos:
+
+- `assignment`: días derivados de la asignación del cliente.
+- `calendar`: eventos del gimnasio creados por trainer/admin.
+- `manual`: eventos privados creados por el propio cliente.
+
+### Tipos visuales
+
+- Verde: entrenamiento.
+- Azul: descanso.
+- Amarillo: clase grupal.
+- Violeta: evento privado.
+
+### Comportamiento
+
+- El cliente ve eventos de su asignación y clases grupales del gimnasio.
+- El cliente puede crear eventos privados en su propio calendario.
+- Los eventos privados se guardan en `CalendarEvent` con `source = manual`.
+- El detalle diario muestra título, tipo, hora, cupos y contenido relacionado.
+
+## Backend de calendario
+
+### `GET /api/calendar`
+
+- Retorna eventos filtrados por rol.
+- `trainer` ve sus eventos y los de sus clientes.
+- `admin` ve todos los eventos del gimnasio.
+- `client` ve:
+  - sus eventos propios
+  - clases grupales del gimnasio
+  - eventos privados creados por él mismo
+
+### `POST /api/calendar`
+
+- `trainer` y `admin` pueden crear eventos operativos.
+- `client` puede crear solo eventos privados para sí mismo.
+- Todos los eventos se almacenan en la colección `CalendarEvent`.
+
+## Modelo de datos
+
+### `CalendarEvent`
+
+Campos principales:
+
+- `title`
+- `description`
+- `date`
+- `type`
+- `completed`
+- `source`
+- `userId`
+- `gymId`
+- `trainerId`
+- `routineId`
+- `mealPlanId`
+- `assignmentId`
+- `capacity`
+- `bookedCount`
+- `attendanceCode`
+- `duration`
+- `reminder`
+
+### `Assignment`
+
+- Relación entre cliente y trainer.
+- Contiene rutina, plan alimenticio y cronograma semanal.
+- Permite proyectar calendario por mes.
+
+### `Routine`
+
+- Rutinas con lista de ejercicios, series, repeticiones y descanso.
+- Se usa para renderizar detalles de entrenamiento en el calendario.
+
+### `User`
+
+- Roles: `superadmin`, `admin`, `trainer`, `client`.
+- Soporta relación cliente-trainer vía `trainerId`.
+
+## Seguridad
+
+- Autenticación por JWT vía cookie o `Authorization: Bearer`.
+- Verificación de usuario activo antes de ejecutar acciones.
+- Validación por rol en endpoints de lectura y escritura.
+- Los clientes no pueden crear eventos para otros usuarios.
+
+## Infraestructura
+
+- `Next.js` como frontend y backend unificados.
+- `MongoDB` para persistencia principal.
+- `Mongoose` para modelos y validación de esquema.
+- `jsonwebtoken` para autenticación.
+- `bcryptjs` para hashing de contraseñas.
+- `Vercel` compatible para despliegue.
 
 ## Estructura de carpetas
 
 ```txt
 app/
-  page.tsx                # Entrada principal de la aplicacion
-  layout.tsx              # Layout global y metadata
-  globals.css             # Estilos globales
-  api/                    # Endpoints del backend
+  api/                 # Route Handlers del backend
+  app/                 # Página principal de la aplicación
+  portal/              # Portal por gimnasio
 components/
-  auth/                   # Login y registro
-  admin/                  # Vista y gestion administrativa
-  trainer/                # Panel de entrenador
-  client/                 # Panel de cliente
-  ui/                     # Componentes reutilizables de interfaz
-hooks/                    # Hooks compartidos
+  admin/               # UI de administración
+  auth/                # Login y registro
+  calendar/            # Vista general del calendario
+  client/              # Dashboard del cliente
+  trainer/             # Panel de trainer
+  ui/                  # Componentes base
 lib/
-  auth.ts                 # Usuarios mock y helpers locales
-  mongodb.ts              # Conexion a MongoDB
-  models/                 # Schemas de Mongoose
-public/                   # Imagenes y recursos estaticos
-styles/                   # Estilos adicionales
+  auth.ts              # Usuarios mock y helpers locales
+  calendar-data.ts     # Contrato de eventos del calendario
+  mongodb.ts           # Conexión a MongoDB
+  models/              # Schemas de Mongoose
+public/                # Assets estáticos
 ```
 
-## Integraciones
+## Observaciones técnicas
 
-- MongoDB: base de datos principal.
-- JWT: autenticacion y control de acceso.
-- bcryptjs: hashing de contrasenas.
-- Next.js API Routes: backend interno.
-- Vercel Analytics: analitica de uso.
-
-## Mejoras recomendadas para convertirlo en un sistema vendible
-
-### Prioridad alta
-
-- Unificar autenticacion real en frontend y backend.
-- Crear CRUD completo para usuarios, rutinas, planes, ejercicios, eventos y asignaciones.
-- Reemplazar datos mock por consultas reales a MongoDB.
-- Agregar validacion de permisos por rol en cada endpoint.
-- Agregar manejo de errores y estados vacios consistentes.
-
-### Prioridad media
-
-- Integrar asistencia y control de entradas.
-- Agregar planes de pago, membresias y vencimientos.
-- Agregar notificaciones por correo o WhatsApp.
-- Agregar historial de progreso con fotos, medidas y peso.
-- Agregar reportes y exportacion a PDF/CSV.
-
-### Prioridad baja
-
-- Multisucursal.
-- Metas automaticas por cliente.
-- Recomendaciones inteligentes de rutina y nutricion.
-- App movil o PWA.
-
-## Lógica faltante importante
-
-- Asignar entrenador a cliente con reglas de negocio.
-- Evitar sobreasignacion de rutinas y planes.
-- Marcar eventos completados y calcular progreso real.
-- Calcular asistencia, cumplimiento y evolucion mensual.
-- Mantener sesion segura y persistente.
-
-## Objetivo del producto
-
-Construir una plataforma que permita a un gimnasio administrar clientes, entrenadores, rutinas, planes alimenticios y seguimiento diario con informacion centralizada y trazable.
-
-## Roadmap sugerido
-
-1. Completar autenticacion y roles.
-2. Implementar CRUDs reales.
-3. Agregar progreso, asistencia y reportes.
-4. Integrar notificaciones y pagos.
-5. Preparar despliegue y documentacion comercial.
+- El proyecto ya funciona como producto funcional en varios módulos.
+- El mayor foco actual está en mantener consistencia de permisos y contratos de datos entre frontend y backend.
+- El calendario ya soporta eventos de asignación, clases grupales y eventos privados del cliente.

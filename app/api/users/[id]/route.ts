@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     await connectDB();
     await verifyAuth(req);
     const { id } = await context.params;
+    logApiRequest('/api/users/[id] GET', { userId: id });
 
     const user = await User.findById(id).select('-password');
     if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -63,7 +65,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         isActive: user.isActive,
       },
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/users/[id] GET', error);
     return NextResponse.json({ error: 'Error al obtener usuario' }, { status: 500 });
   }
 }
@@ -73,6 +76,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     await connectDB();
     const currentUser = await verifyAuth(req);
     const { id } = await context.params;
+    logApiRequest('/api/users/[id] PUT', { currentUserId: currentUser._id.toString(), targetUserId: id });
 
     if (!['admin', 'superadmin'].includes(currentUser.role) && currentUser._id.toString() !== id) {
       return NextResponse.json({ error: 'No tienes permisos para editar este usuario' }, { status: 403 });
@@ -114,7 +118,8 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         isActive: updatedUser.isActive,
       },
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/users/[id] PUT', error);
     return NextResponse.json({ error: 'Error al actualizar usuario' }, { status: 500 });
   }
 }
@@ -124,6 +129,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     await connectDB();
     const currentUser = await verifyAuth(req);
     const { id } = await context.params;
+    logApiRequest('/api/users/[id] DELETE', { currentUserId: currentUser._id.toString(), targetUserId: id });
 
     if (!['admin', 'superadmin'].includes(currentUser.role) && currentUser._id.toString() !== id) {
       return NextResponse.json({ error: 'No tienes permisos para eliminar este usuario' }, { status: 403 });
@@ -131,7 +137,8 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
     await User.findByIdAndUpdate(id, { isActive: false });
     return NextResponse.json({ message: 'Usuario desactivado exitosamente' });
-  } catch {
+  } catch (error) {
+    logApiError('/api/users/[id] DELETE', error);
     return NextResponse.json({ error: 'Error al eliminar usuario' }, { status: 500 });
   }
 }

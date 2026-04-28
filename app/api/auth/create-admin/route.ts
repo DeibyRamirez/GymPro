@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 // Endpoint para crear el administrador inicial
 // IMPORTANTE: En producción, proteger este endpoint con una clave secreta o deshabilitarlo después de crear el admin
@@ -10,6 +11,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { name, email, password, secretKey } = body;
+    logApiRequest('/api/auth/create-admin POST', { name, email });
 
     // Validar clave secreta (en producción, usar una variable de entorno)
     const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'crear-admin-secreto-2024';
@@ -78,7 +80,7 @@ export async function POST(req: NextRequest) {
     );
 
   } catch (error: unknown) {
-    console.error('Error creando administrador:', error);
+    logApiError('/api/auth/create-admin POST', error);
     const message = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
       { error: 'Error al crear administrador', details: message },

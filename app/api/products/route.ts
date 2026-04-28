@@ -4,6 +4,7 @@ import Product from '@/lib/models/Product';
 import User from '@/lib/models/User';
 import Gym from '@/lib/models/Gym';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
     const user = await verifyAuth(req);
     const { searchParams } = new URL(req.url);
     const gymSlug = searchParams.get('gymSlug');
+    logApiRequest('/api/products GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, gymSlug });
     let gymId = user.gymId || null;
     if (gymSlug && user.role === 'superadmin') {
       const gym = await Gym.findOne({ slug: gymSlug, status: { $ne: 'suspended' } }).select('_id');
@@ -46,7 +48,8 @@ export async function GET(req: NextRequest) {
         lowStock: product.stock <= product.lowStockThreshold,
       })),
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/products GET', error);
     return NextResponse.json({ error: 'Error al obtener productos' }, { status: 500 });
   }
 }
@@ -64,6 +67,7 @@ export async function POST(req: NextRequest) {
     // encontrar gimnasios relevantes de manera rápida y eficiente, mejorando así la experiencia de navegación y facilitando la
     // conexión entre los clientes y los gimnasios que mejor se adapten a sus necesidades e intereses.
     const { name, description, category, price, stock, lowStockThreshold, image } = body;
+    logApiRequest('/api/products POST', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, gymSlug: body.gymSlug || null, name, category, price, stock });
     if (!name || !description || !category || price === undefined || stock === undefined) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
     }
@@ -90,7 +94,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ product }, { status: 201 });
-  } catch {
+  } catch (error) {
+    logApiError('/api/products POST', error);
     return NextResponse.json({ error: 'Error al crear producto' }, { status: 500 });
   }
 }

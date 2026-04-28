@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import BodyMeasurement from '@/lib/models/BodyMeasurement';
 import CalendarEvent from '@/lib/models/CalendarEvent';
+import Assignment from '@/lib/models/Assignment';
 import User from '@/lib/models/User';
 import jwt from 'jsonwebtoken';
+import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -18,6 +20,15 @@ type Achievement = {
   description: string;
   unlocked: boolean;
 };
+
+type RoutineHistoryItem = {
+  assignmentId: string;
+  routineName: string;
+  completedSets: number;
+  totalSets: number;
+  completionRate: number;
+  lastCompletedAt?: Date | null;
+}
 
 // La función isAuthorizedToAccess implementa una lógica de autorización basada en roles y relaciones entre usuarios, 
 // asegurando que los clientes solo puedan acceder a su propio progreso, los entrenadores solo puedan acceder al progreso de 
@@ -130,6 +141,21 @@ function buildAchievements(measurements: Array<{ date: Date }>, workoutDates: Da
     },
   ];
 }
+
+function buildRoutineHistory(assignments: Array<{ _id: unknown; routineId?: { name?: string } | null; routineProgress?: Array<{ completedAt: Date }> }>) {
+  return assignments.map((assignment) => {
+    const completedSets = assignment.routineProgress?.length || 0;
+    const totalSets = Math.max(completedSets, 1);
+    return {
+      assignmentId: String(assignment._id),
+      routineName: assignment.routineId?.name || 'Rutina asignada',
+      completedSets,
+      totalSets,
+      completionRate: Math.round((completedSets / totalSets) * 100),
+      lastCompletedAt: assignment.routineProgress?.at(-1)?.completedAt || null,
+    } satisfies RoutineHistoryItem;
+  });
+}
 // La función buildAchievements calcula el estado de los logros del usuario en función de sus mediciones corporales y eventos de entrenamiento,
 // permitiendo a los usuarios ver su progreso y logros de manera transparente y motivadora, lo que fomenta la continuidad en su viaje de fitness 
 // y el compromiso con sus objetivos de salud y bienestar.
@@ -138,6 +164,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     await connectDB();
     const currentUser = await verifyAuth(req);
     const { id } = await context.params;
+    logApiRequest('/api/users/[id]/progress GET', { currentUserId: currentUser._id.toString(), targetUserId: id });
     const targetUser = await User.findById(id).select('name email role trainerId isActive');
 
     if (!targetUser) {
@@ -154,19 +181,25 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       type: 'workout',
       completed: true,
     }).select('date');
+    const assignments = await Assignment.find({ clientId: id })
+      .populate('routineId', 'name')
+      .select('routineId routineProgress');
 
     const achievements = buildAchievements(measurements, workoutEvents.map((event) => event.date));
+    const routineHistory = buildRoutineHistory(assignments);
 
     return NextResponse.json({
       measurements,
       achievements,
+      routineHistory,
       summary: {
         totalMeasurements: measurements.length,
         latestMeasurement: measurements.at(-1) || null,
         longestWorkoutStreak: getLongestWorkoutStreak(workoutEvents.map((event) => event.date)),
       },
     });
-  } catch {
+  } catch (error) {
+    logApiError('/api/users/[id]/progress GET', error);
     return NextResponse.json({ error: 'Error al obtener el progreso' }, { status: 500 });
   }
 }
@@ -177,6 +210,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     await connectDB();
     const currentUser = await verifyAuth(req);
     const { id } = await context.params;
+    logApiRequest('/api/users/[id]/progress POST', { currentUserId: currentUser._id.toString(), targetUserId: id });
     const targetUser = await User.findById(id).select('role trainerId isActive');
 
     if (!targetUser) {
@@ -210,13 +244,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       type: 'workout',
       completed: true,
     }).select('date');
+    const assignments = await Assignment.find({ clientId: id }).populate('routineId', 'name').select('routineId routineProgress');
 
     // La función buildAchievements calcula el estado de los logros del usuario en función de sus mediciones corporales y eventos de entrenamiento,
     return NextResponse.json({
       measurement,
       achievements: buildAchievements(measurements, workoutEvents.map((event) => event.date)),
+      routineHistory: buildRoutineHistory(assignments),
     }, { status: 201 });
-  } catch {
+  } catch (error) {
+    logApiError('/api/users/[id]/progress POST', error);
     return NextResponse.json({ error: 'Error al guardar el progreso' }, { status: 500 });
   }
 }
