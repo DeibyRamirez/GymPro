@@ -25,6 +25,12 @@ export interface IUser extends Document {
   goal?: 'perder_peso' | 'ganar_masa' | 'mantenimiento' | 'tonificar' | 'resistencia' | 'otro'; // Objetivo
   activityLevel?: 'principiante' | 'intermedio' | 'avanzado'; // Nivel de actividad
   medicalConditions?: string; // Condiciones médicas o lesiones
+  membershipPlan?: {
+    name: string;
+    price?: number;
+    description?: string;
+    featured?: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -134,6 +140,12 @@ const UserSchema = new Schema<IUser>({
     type: String,
     trim: true,
     maxlength: [500, 'Las condiciones médicas no pueden exceder 500 caracteres']
+  },
+  membershipPlan: {
+    name: { type: String, trim: true },
+    price: { type: Number, min: 0 },
+    description: { type: String, trim: true },
+    featured: { type: Boolean, default: false },
   }
 }, {
   timestamps: true,

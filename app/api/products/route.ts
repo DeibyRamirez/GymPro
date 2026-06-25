@@ -1,21 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
-import User from '@/lib/models/User';
 import Gym from '@/lib/models/Gym';
-import jwt from 'jsonwebtoken';
+import { buildPagination, parsePagination } from '@/lib/pagination';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
 
 // Definición de los filtros que se pueden aplicar al obtener productos
 export async function GET(req: NextRequest) {
@@ -24,20 +15,22 @@ export async function GET(req: NextRequest) {
     const user = await verifyAuth(req);
     const { searchParams } = new URL(req.url);
     const gymSlug = searchParams.get('gymSlug');
-    logApiRequest('/api/products GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, gymSlug });
+    const { page, limit, skip } = parsePagination(searchParams, 100);
+    logApiRequest('/api/products GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, gymSlug, page, limit });
     let gymId = user.gymId || null;
     if (gymSlug && user.role === 'superadmin') {
       const gym = await Gym.findOne({ slug: gymSlug, status: { $ne: 'suspended' } }).select('_id');
       gymId = gym?._id || null;
     }
 
-    const products = await Product.find({ isActive: true, gymId }).sort({ createdAt: -1 });
-    // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios 
-    // encontrar gimnasios relevantes de manera rápida y eficiente, mejorando así la experiencia de navegación y facilitando la
-    // conexión entre los clientes y los gimnasios que mejor se adapten a sus necesidades e intereses.
+    const [products, total] = await Promise.all([
+      Product.find({ isActive: true, gymId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Product.countDocuments({ isActive: true, gymId }),
+    ]);
+
     return NextResponse.json({
       products: products.map((product) => ({
-        id: product._id.toString(),
+        id: String(product._id),
         name: product.name,
         description: product.description,
         category: product.category,
@@ -47,6 +40,7 @@ export async function GET(req: NextRequest) {
         image: product.image,
         lowStock: product.stock <= product.lowStockThreshold,
       })),
+      pagination: buildPagination(page, limit, total),
     });
   } catch (error) {
     logApiError('/api/products GET', error);

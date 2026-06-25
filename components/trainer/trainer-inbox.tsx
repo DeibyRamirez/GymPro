@@ -8,6 +8,15 @@ import { Input } from '@/components/ui/input'
 import { Loader2, Search, Mail, UserCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+type ThreadMessage = {
+  content: string
+  createdAt: string
+  senderId?: { id?: string; _id?: string; name?: string; role?: string; avatar?: string }
+  receiverId?: { id?: string; _id?: string; name?: string; role?: string; avatar?: string }
+  senderRole?: string | null
+  receiverRole?: string | null
+}
+
 type InboxMessage = {
   id?: string
   _id?: string
@@ -41,7 +50,7 @@ export function TrainerInbox({ trainerId }: TrainerInboxProps) {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const threadMessages = (thread: InboxMessage) => {
+  const threadMessages = (thread: InboxMessage): ThreadMessage[] => {
     if (Array.isArray(thread.content)) return thread.content
     if (Array.isArray(thread.messages)) return thread.messages
     if (typeof thread.content === 'string' && thread.content.trim()) {

@@ -1,21 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
-import { logApiError, logApiRequest } from '@/lib/api-debug';
+/**
+ * GET/PUT/DELETE /api/users/[id]
+ *
+ * Ejemplo completo del pilar Seguridad aplicado a un CRUD:
+ *
+ * GET  → verifyAuth + canAccessUser + assertSameGym
+ * PUT  → assertCsrf + verifyAuth + permisos por rol + validateAvatarUrl + auditLog
+ * DELETE → assertCsrf + requireRoles(admin) + assertSameGym + auditLog
+ *
+ * canAccessUser(): lógica de negocio que no cabe en requireRoles genérico
+ * (trainer solo ve SUS clientes, no todos los del gym).
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import {
+  assertSameGym,
+  handleAuthError,
+  requireRoles,
+  verifyAuth,
+} from '@/lib/auth-server'
+import connectDB from '@/lib/mongodb'
+import User, { IUser } from '@/lib/models/User'
+import { logApiError, logApiRequest } from '@/lib/api-debug'
+import { assertCsrf } from '@/lib/csrf'
+import { auditLog } from '@/lib/audit-log'
+import { validateAvatarUrl } from '@/lib/file-validation'
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
-
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
-// Definimos un tipo para el cuerpo de la solicitud de actualización, con campos opcionales para permitir actualizaciones parciales
 type UserUpdateBody = Partial<{
   name: string
   email: string
@@ -32,19 +40,66 @@ type UserUpdateBody = Partial<{
   medicalConditions: string
   isActive: boolean
 }>
-// Campos que se pueden actualizar, definidos como una tupla de literales para mantener la tipificación estricta
-const updatableFields = ['name', 'email', 'role', 'avatar', 'trainerId', 'age', 'weight', 'height', 'gender', 'phone', 'goal', 'activityLevel', 'medicalConditions', 'isActive'] as const
 
-// GET para obtener detalles de un usuario
+const updatableFields = [
+  'name',
+  'email',
+  'role',
+  'avatar',
+  'trainerId',
+  'age',
+  'weight',
+  'height',
+  'gender',
+  'phone',
+  'goal',
+  'activityLevel',
+  'medicalConditions',
+  'isActive',
+] as const
+
+/**
+ * Reglas de acceso granulares por rol.
+ * requireRoles() solo dice "¿es admin/trainer/client?".
+ * canAccessUser() responde "¿puede ver/editar ESTE usuario concreto?"
+ */
+function canAccessUser(currentUser: IUser, targetUser: IUser | null): boolean {
+  if (!targetUser) return false
+  if (currentUser.role === 'superadmin') return true
+  if (currentUser._id.toString() === targetUser._id.toString()) return true
+  if (currentUser.role === 'admin') {
+    return currentUser.gymId?.toString() === targetUser.gymId?.toString()
+  }
+  if (currentUser.role === 'trainer') {
+    return (
+      currentUser.gymId?.toString() === targetUser.gymId?.toString() &&
+      (targetUser.trainerId?.toString() === currentUser._id.toString() ||
+        targetUser._id.toString() === currentUser._id.toString())
+    )
+  }
+  return false
+}
+
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    await connectDB();
-    await verifyAuth(req);
-    const { id } = await context.params;
-    logApiRequest('/api/users/[id] GET', { userId: id });
+    await connectDB()
+    const currentUser = await verifyAuth(req)
+    const { id } = await context.params
+    logApiRequest('/api/users/[id] GET', { userId: id })
 
-    const user = await User.findById(id).select('-password');
-    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+    const user = await User.findById(id).select('-password')
+    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+
+    if (!canAccessUser(currentUser, user)) {
+      auditLog('access.denied', {
+        route: '/api/users/[id] GET',
+        userId: currentUser._id.toString(),
+        targetUserId: id,
+      })
+      return NextResponse.json({ error: 'No tienes permisos para ver este usuario' }, { status: 403 })
+    }
+
+    assertSameGym(currentUser, user.gymId)
 
     return NextResponse.json({
       user: {
@@ -64,47 +119,79 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         medicalConditions: user.medicalConditions,
         isActive: user.isActive,
       },
-    });
+    })
   } catch (error) {
-    logApiError('/api/users/[id] GET', error);
-    return NextResponse.json({ error: 'Error al obtener usuario' }, { status: 500 });
+    logApiError('/api/users/[id] GET', error)
+    const authError = handleAuthError(error)
+    return NextResponse.json({ error: authError.message }, { status: authError.status })
   }
 }
-// PUT para actualizar usuario
+
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    await connectDB();
-    const currentUser = await verifyAuth(req);
-    const { id } = await context.params;
-    logApiRequest('/api/users/[id] PUT', { currentUserId: currentUser._id.toString(), targetUserId: id });
+    assertCsrf(req)
+    await connectDB()
+    const currentUser = await verifyAuth(req)
+    const { id } = await context.params
+    logApiRequest('/api/users/[id] PUT', {
+      currentUserId: currentUser._id.toString(),
+      targetUserId: id,
+    })
 
-    if (!['admin', 'superadmin'].includes(currentUser.role) && currentUser._id.toString() !== id) {
-      return NextResponse.json({ error: 'No tienes permisos para editar este usuario' }, { status: 403 });
+    const user = await User.findById(id)
+    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+
+    if (!canAccessUser(currentUser, user)) {
+      return NextResponse.json({ error: 'No tienes permisos para editar este usuario' }, { status: 403 })
     }
 
-    const body = (await req.json()) as UserUpdateBody;
-    const updateData: Record<string, unknown> = {};
+    assertSameGym(currentUser, user.gymId)
+
+    const body = (await req.json()) as UserUpdateBody
+    const updateData: Record<string, unknown> = {}
 
     for (const key of updatableFields) {
-      const value = body[key];
-      if (value !== undefined) updateData[key] = value;
+      const value = body[key]
+      if (value !== undefined) updateData[key] = value
+    }
+
+    if (currentUser.role === 'client') {
+      delete updateData.role
+      delete updateData.isActive
+      delete updateData.trainerId
+    }
+
+    if (currentUser.role === 'trainer') {
+      delete updateData.role
+      delete updateData.isActive
+    }
+
+    if (currentUser.role === 'admin') {
+      delete updateData.role
+    }
+
+    if (updateData.avatar !== undefined && !validateAvatarUrl(updateData.avatar)) {
+      return NextResponse.json({ error: 'URL de avatar inválida' }, { status: 400 })
     }
 
     if (updateData.role && updateData.role !== 'client' && body.trainerId === undefined) {
-      updateData.trainerId = null;
+      updateData.trainerId = null
     }
 
-    const user = await User.findById(id);
-    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
-
     Object.entries(updateData).forEach(([key, value]) => {
-      user.set(key, value);
-    });
+      user.set(key, value)
+    })
 
-    await user.save();
+    await user.save()
 
-    const updatedUser = await User.findById(id).select('-password');
-    if (!updatedUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+    auditLog('user.update', {
+      actorId: currentUser._id.toString(),
+      targetUserId: id,
+      fields: Object.keys(updateData),
+    })
+
+    const updatedUser = await User.findById(id).select('-password')
+    if (!updatedUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
 
     return NextResponse.json({
       message: 'Usuario actualizado exitosamente',
@@ -117,28 +204,43 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         trainerId: updatedUser.trainerId?.toString(),
         isActive: updatedUser.isActive,
       },
-    });
+    })
   } catch (error) {
-    logApiError('/api/users/[id] PUT', error);
-    return NextResponse.json({ error: 'Error al actualizar usuario' }, { status: 500 });
+    logApiError('/api/users/[id] PUT', error)
+    const authError = handleAuthError(error)
+    return NextResponse.json({ error: authError.message }, { status: authError.status })
   }
 }
-// Para eliminar un usuario, en lugar de borrarlo físicamente, lo marcamos como inactivo
+
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    await connectDB();
-    const currentUser = await verifyAuth(req);
-    const { id } = await context.params;
-    logApiRequest('/api/users/[id] DELETE', { currentUserId: currentUser._id.toString(), targetUserId: id });
+    assertCsrf(req)
+    await connectDB()
+    const currentUser = await verifyAuth(req)
+    const { id } = await context.params
+    logApiRequest('/api/users/[id] DELETE', {
+      currentUserId: currentUser._id.toString(),
+      targetUserId: id,
+    })
 
-    if (!['admin', 'superadmin'].includes(currentUser.role) && currentUser._id.toString() !== id) {
-      return NextResponse.json({ error: 'No tienes permisos para eliminar este usuario' }, { status: 403 });
-    }
+    requireRoles(currentUser, ['admin', 'superadmin'])
 
-    await User.findByIdAndUpdate(id, { isActive: false });
-    return NextResponse.json({ message: 'Usuario desactivado exitosamente' });
+    const user = await User.findById(id)
+    if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+
+    assertSameGym(currentUser, user.gymId)
+
+    await User.findByIdAndUpdate(id, { isActive: false })
+
+    auditLog('user.delete', {
+      actorId: currentUser._id.toString(),
+      targetUserId: id,
+    })
+
+    return NextResponse.json({ message: 'Usuario desactivado exitosamente' })
   } catch (error) {
-    logApiError('/api/users/[id] DELETE', error);
-    return NextResponse.json({ error: 'Error al eliminar usuario' }, { status: 500 });
+    logApiError('/api/users/[id] DELETE', error)
+    const authError = handleAuthError(error)
+    return NextResponse.json({ error: authError.message }, { status: authError.status })
   }
 }

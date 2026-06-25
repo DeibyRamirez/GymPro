@@ -16,6 +16,7 @@ import { StatsCard } from "./stats-card"
 import { UsersTable } from "./users-table"
 
 type GymItem = { id: string; name: string; slug: string; location: string; status: string; adminEmail?: string }
+type GymPlan = { name: string; price?: number; description?: string; featured?: boolean }
 type GymEquipment = { id?: string; name: string; category: 'cardio' | 'fuerza' | 'funcional' | 'accesorio' | 'otro'; description?: string; image?: string; quantity: number; gymId?: string }
 type ProductItem = { id?: string; name: string; description?: string; category: 'suplemento' | 'accesorio' | 'bebida'; price: number; stock: number; lowStockThreshold: number; image?: string; gymId?: string }
 type CurrentMe = { user?: { gymSlug?: string | null } }
@@ -41,8 +42,10 @@ export function AdminDashboard() {
   const [selectedGymSlug, setSelectedGymSlug] = useState<string>("")
   const [equipment, setEquipment] = useState<GymEquipment[]>([])
   const [products, setProducts] = useState<ProductItem[]>([])
+  const [plans, setPlans] = useState<GymPlan[]>([])
   const [productForm, setProductForm] = useState({ name: "", description: "", category: "suplemento" as ProductItem['category'], price: "", stock: "", lowStockThreshold: "5", image: "" })
   const [equipmentForm, setEquipmentForm] = useState({ name: "", description: "", category: "fuerza" as GymEquipment['category'], quantity: "1", image: "" })
+  const [planForm, setPlanForm] = useState({ name: "", price: "", description: "", featured: false })
 
   useEffect(() => {
     async function fetchDashboardAdmin() {
@@ -76,10 +79,13 @@ export function AdminDashboard() {
         fetch(`/api/gym-equipment?gymSlug=${selectedGymSlug}`, { credentials: 'include' }),
         fetch(`/api/products?gymSlug=${selectedGymSlug}`, { credentials: 'include' }),
       ])
+      const gymRes = await fetch(`/api/gyms/${selectedGymSlug}`, { credentials: 'include' })
       const equipmentData = await equipmentRes.json()
       setEquipment(equipmentData.equipment || [])
       const productsData = await productsRes.json()
       setProducts((productsData.products || []) as ProductItem[])
+      const gymData = await gymRes.json()
+      setPlans((gymData.gym?.plans || []) as GymPlan[])
     }
     loadInventory()
   }, [selectedGymSlug])
@@ -137,6 +143,40 @@ export function AdminDashboard() {
     const res = await fetch(`/api/gym-equipment?gymSlug=${selectedGymSlug}`, { credentials: 'include' })
     const data = await res.json()
     setEquipment(data.equipment || [])
+  }
+
+  const savePlan = async () => {
+    if (!selectedGymSlug || !planForm.name) return
+    const nextPlans = [
+      ...plans.filter((plan) => plan.name.toLowerCase() !== planForm.name.toLowerCase()),
+      {
+        name: planForm.name,
+        price: planForm.price ? Number(planForm.price) : undefined,
+        description: planForm.description,
+        featured: planForm.featured,
+      },
+    ]
+
+    await fetch('/api/gyms', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ slug: selectedGymSlug, plans: nextPlans }),
+    })
+
+    setPlanForm({ name: "", price: "", description: "", featured: false })
+    setPlans(nextPlans)
+  }
+
+  const deletePlan = async (planName: string) => {
+    const nextPlans = plans.filter((plan) => plan.name !== planName)
+    await fetch('/api/gyms', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ slug: selectedGymSlug, plans: nextPlans }),
+    })
+    setPlans(nextPlans)
   }
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
@@ -202,6 +242,25 @@ export function AdminDashboard() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Plus className="h-4 w-4" /> Planes de membresía</CardTitle>
+                <CardDescription>CRUD local de planes del gimnasio seleccionado.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input placeholder="Nombre" value={planForm.name} onChange={(e) => setPlanForm((c) => ({ ...c, name: e.target.value }))} />
+                  <Input placeholder="Precio" type="number" value={planForm.price} onChange={(e) => setPlanForm((c) => ({ ...c, price: e.target.value }))} />
+                </div>
+                <Textarea placeholder="Descripción" value={planForm.description} onChange={(e) => setPlanForm((c) => ({ ...c, description: e.target.value }))} />
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={planForm.featured} onChange={(e) => setPlanForm((c) => ({ ...c, featured: e.target.checked }))} /> Recomendado</label>
+                <Button onClick={savePlan} className="w-full"><Plus className="mr-2 h-4 w-4" /> Guardar plan</Button>
+                <div className="grid gap-3">
+                  {plans.map((plan) => <div key={plan.name} className="rounded-xl border p-3 text-sm"><p className="font-medium">{plan.name}</p><p className="text-muted-foreground">{typeof plan.price === 'number' ? `$${plan.price}` : 'Sin precio'}</p><Button variant="ghost" size="sm" className="mt-2" onClick={() => deletePlan(plan.name)}>Eliminar</Button></div>)}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><ShoppingBag className="h-4 w-4" /> Productos</CardTitle>

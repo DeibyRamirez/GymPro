@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import BodyMeasurement from '@/lib/models/BodyMeasurement';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 import Assignment from '@/lib/models/Assignment';
 import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
 type JwtPayload = { userId: string };
 
@@ -45,16 +44,7 @@ type MeasurementInput = {
   thigh?: number;
   notes?: string;
 };
-// La función buildAchievements calcula el estado de los logros del usuario en función de sus mediciones corporales y eventos de entrenamiento,
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
 
-  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
 
 // permitiendo a los usuarios ver su progreso y logros de manera transparente y motivadora, lo que fomenta la continuidad en su viaje de fitness y el compromiso con sus objetivos de salud y bienestar.
 function toIdString(value: unknown) {

@@ -1,20 +1,12 @@
 import mongoose from 'mongoose';
+import { verifyAuth } from '@/lib/auth-server';
 import Message from '@/lib/models/Message';
 import User from '@/lib/models/User';
 import connectDB from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { buildPagination, parsePagination } from '@/lib/pagination';
 import { NextRequest, NextResponse } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
 
 function threadParticipants(thread: { senderId: unknown; receiverId: unknown }) {
   return [String(thread.senderId), String(thread.receiverId)];
@@ -80,6 +72,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const otherUserId = searchParams.get('otherUserId');
     const inboxOnly = searchParams.get('inboxOnly') === 'true';
+    const { page, limit, skip } = parsePagination(searchParams, 30);
 
     const threadFilter: Record<string, unknown> = { gymId: user.gymId || null };
 
@@ -98,17 +91,25 @@ export async function GET(req: NextRequest) {
       threadFilter.$or = [{ senderId: user._id }, { receiverId: user._id }];
     }
 
-    const messages = await Message.find(threadFilter)
-      .populate('senderId', 'name avatar role')
-      .populate('receiverId', 'name avatar role')
-      .sort({ updatedAt: -1 });
+    const [messages, total] = await Promise.all([
+      Message.find(threadFilter)
+        .populate('senderId', 'name avatar role')
+        .populate('receiverId', 'name avatar role')
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Message.countDocuments(threadFilter),
+    ]);
 
     const normalized = messages.map((thread) => {
       const plain = thread.toObject();
       return enrichThreadPayload(plain as never);
     });
 
-    return NextResponse.json({ messages: normalized });
+    return NextResponse.json({
+      messages: normalized,
+      pagination: buildPagination(page, limit, total),
+    });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Error al obtener mensajes' }, { status: 500 });
   }

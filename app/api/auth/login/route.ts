@@ -1,163 +1,125 @@
-import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/lib/models/User';
-import Gym from '@/lib/models/Gym';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-
-const JWT_SECRET = process.env.JWT_SECRET!;
+/**
+ * POST /api/auth/login
+ *
+ * Orden de defensas (de afuera hacia adentro):
+ * 1. Rate limit → frena fuerza bruta por IP
+ * 2. Validación de input → email/password requeridos
+ * 3. Consulta BD → credenciales + usuario activo
+ * 4. Audit log → éxito o fallo (sin guardar la contraseña)
+ * 5. JWT + cookie HTTP-only → sesión segura
+ *
+ * Eliminamos el "bypass de admin" hardcodeado: todo usuario debe existir en MongoDB.
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import connectDB from '@/lib/mongodb'
+import User from '@/lib/models/User'
+import Gym from '@/lib/models/Gym'
+import { auditLog } from '@/lib/audit-log'
+import { enforceRateLimit, getClientIp } from '@/lib/rate-limit'
+import {
+  handleAuthError,
+  setAuthCookie,
+  signAuthToken,
+  toPublicUser,
+} from '@/lib/auth-server'
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB();
-
-    const body = await req.json();
-    const { email, password, gymSlug } = body;
-
-    // =====================================
-    // 🚀 INGRESO DE ADMIN FORZADO
-    // =====================================
-    if (email === "admin@gmail.com" && password === "123456789") {
-      let adminUser = await User.findOne({ email: "admin@gmail.com" });
-
-      if (!adminUser) {
-        const hashedPassword = await bcrypt.hash("123456789", 10);
-
-        adminUser = new User({
-          name: "Administrador",
-          email: "admin@gmail.com",
-          password: hashedPassword,
-          role: "admin",
-          isActive: true,
-        });
-
-        await adminUser.save();
-        console.log("✅ Usuario admin creado automáticamente en la base de datos");
-      }
-
-      // Crear token para el admin
-      const token = jwt.sign(
-        { userId: adminUser._id, email: adminUser.email, role: adminUser.role },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-
-      const userResponse = {
-        id: adminUser._id.toString(),
-        name: adminUser.name,
-        email: adminUser.email,
-        role: adminUser.role,
-        avatar: adminUser.avatar || null,
-      };
-
-      const response = NextResponse.json(
+    const rateLimit = enforceRateLimit(req, 'auth:login', 10, 15 * 60 * 1000)
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos. Intenta de nuevo más tarde.' },
         {
-          message: 'Inicio de sesión exitoso (Admin)',
-          user: userResponse,
-          token
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.retryAfter || 60) },
         },
-        { status: 200 }
-      );
-
-      // Establecer cookie de autenticación
-      response.cookies.set('auth-token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7 // 7 días
-      });
-
-      return response;
+      )
     }
-    // =====================================
 
-    // Validaciones normales
+    await connectDB()
+
+    const body = await req.json()
+    const { email, password, gymSlug } = body
+
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Correo electrónico y contraseña son requeridos' },
-        { status: 400 }
-      );
+        { status: 400 },
+      )
     }
 
-    const gym = gymSlug ? await Gym.findOne({ slug: String(gymSlug).toLowerCase() }) : null;
+    const gym = gymSlug ? await Gym.findOne({ slug: String(gymSlug).toLowerCase() }) : null
     if (gymSlug && !gym) {
-      return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });
+      return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 })
     }
 
-    // Buscar usuario e incluir la contraseña para comparación
     const user = await User.findOne({
       email: email.toLowerCase(),
       ...(gym ? { gymId: gym._id } : {}),
-    }).select('+password');
+    }).select('+password')
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'Credenciales inválidas' },
-        { status: 401 }
-      );
+      auditLog('auth.login.failed', {
+        email: String(email).toLowerCase(),
+        ip: getClientIp(req),
+        reason: 'invalid_credentials',
+      })
+      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
     }
 
-    // Verificar si el usuario está activo
     if (!user.isActive) {
+      auditLog('auth.login.failed', {
+        userId: user._id.toString(),
+        ip: getClientIp(req),
+        reason: 'inactive_account',
+      })
       return NextResponse.json(
         { error: 'Tu cuenta ha sido desactivada. Contacta al administrador.' },
-        { status: 403 }
-      );
+        { status: 403 },
+      )
     }
 
-    // Verificar contraseña
-    const isPasswordValid = await user.comparePassword(password);
-
+    const isPasswordValid = await user.comparePassword(password)
     if (!isPasswordValid) {
-      return NextResponse.json(
-        { error: 'Credenciales inválidas' },
-        { status: 401 }
-      );
+      auditLog('auth.login.failed', {
+        userId: user._id.toString(),
+        ip: getClientIp(req),
+        reason: 'invalid_credentials',
+      })
+      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
     }
 
-    // Generar token JWT
-    const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = signAuthToken(user)
+    const userResponse = toPublicUser(user, gym)
 
-    const userResponse = {
-      id: user._id.toString(),
-      name: user.name,
-      email: user.email,
+    auditLog('auth.login.success', {
+      userId: user._id.toString(),
       role: user.role,
-      avatar: user.avatar,
-      trainerId: user.trainerId?.toString(),
-      gymId: user.gymId?.toString(),
-      gymSlug: gym?.slug || null,
-      gymName: gym?.name || null,
-    };
+      ip: getClientIp(req),
+    })
 
     const response = NextResponse.json(
       {
         message: 'Inicio de sesión exitoso',
         user: userResponse,
-        token
+        token,
       },
-      { status: 200 }
-    );
+      { status: 200 },
+    )
 
-    response.cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 días
-    });
-
-    return response;
-
+    setAuthCookie(response, token)
+    return response
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('Error en login:', error);
+    const authError = handleAuthError(error)
+    if (authError.status !== 500) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status })
+    }
+
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    console.error('Error en login:', error)
     return NextResponse.json(
       { error: 'Error al iniciar sesión', details: message },
-      { status: 500 }
-    );
+      { status: 500 },
+    )
   }
 }

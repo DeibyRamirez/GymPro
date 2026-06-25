@@ -27,6 +27,13 @@ type MachineCard = {
   description?: string
 }
 
+type PlanCard = {
+  name: string
+  price?: number
+  description?: string
+  featured?: boolean
+}
+
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
 
@@ -61,6 +68,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       image: machine.image || '/placeholder.jpg',
       description: machine.description,
     })) as MachineCard[],
+    plans: gym.plans as PlanCard[],
   }
 
   return (
@@ -164,6 +172,27 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             </CardContent>
           </Card>
         </div>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Badge variant="secondary">Planes</Badge> Membresías disponibles</CardTitle>
+            <CardDescription>Elige la membresía que mejor se adapte a tu objetivo.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {gymData.plans.map((plan: PlanCard) => (
+              <div key={plan.name} className={`rounded-2xl border p-4 ${plan.featured ? 'border-primary bg-primary/5' : 'bg-card'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{plan.name}</p>
+                    <p className="text-2xl font-black">{typeof plan.price === 'number' ? `$${plan.price}` : 'Precio a consultar'}</p>
+                  </div>
+                  {plan.featured ? <Badge>Recomendado</Badge> : null}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{plan.description || 'Acceso a las instalaciones del gimnasio.'}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
         <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur md:hidden">
           <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 px-4 py-3">

@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Gym from '@/lib/models/Gym';
 import GymEquipment from '@/lib/models/GymEquipment';
-import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
 
 export async function GET(req: NextRequest) {
   try {

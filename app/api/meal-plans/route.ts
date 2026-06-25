@@ -1,34 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import MealPlan from '@/lib/models/MealPlan';
-import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
+import { buildPagination, parsePagination } from '@/lib/pagination';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
 type JwtPayload = { userId: string }
 type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }> }
 type ApiErrorLike = { message?: string }
 
-// Middleware para verificar autenticación
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || 
-                req.headers.get('authorization')?.replace('Bearer ', '');
 
-  if (!token) {
-    throw new Error('Token no proporcionado');
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-  const user = await User.findById(decoded.userId);
-
-  if (!user || !user.isActive) {
-    throw new Error('Usuario no encontrado o inactivo');
-  }
-
-  return user;
-}
 
 // GET - Obtener todos los planes alimenticios
 export async function GET(req: NextRequest) {
@@ -37,8 +19,7 @@ export async function GET(req: NextRequest) {
     const user = await verifyAuth(req);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const { page, limit, skip } = parsePagination(searchParams, 10);
     const search = searchParams.get('search') || '';
     const difficulty = searchParams.get('difficulty') || '';
     logApiRequest('/api/meal-plans GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, query: { page, limit, search, difficulty } });
@@ -75,8 +56,6 @@ export async function GET(req: NextRequest) {
 
     filters.isActive = true;
 
-    const skip = (page - 1) * limit;
-
     const [mealPlans, total] = await Promise.all([
       MealPlan.find(filters)
         .populate('createdBy', 'name email')
@@ -88,12 +67,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       mealPlans,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: limit
-      }
+      pagination: buildPagination(page, limit, total),
     });
 
   } catch (error) {

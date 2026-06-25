@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, CheckCircle2, Circle, Users } from "lucide-react"
+import { Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, CheckCircle2, Circle, Users, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CalendarEvent } from "@/lib/calendar-data"
 

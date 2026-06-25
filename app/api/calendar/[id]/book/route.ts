@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import CalendarEvent from '@/lib/models/CalendarEvent';
-import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
+import { notifyClassBooking } from '@/lib/notifications/triggers';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -41,6 +32,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     event.bookedCount = bookedCount + 1;
     await event.save();
+
+    await notifyClassBooking({
+      userId: user._id,
+      gymId: user.gymId,
+      title: event.title,
+      date: event.date,
+      eventId: String(event._id),
+    }).catch((err) => console.error('[notifications] booking:', err));
 
     return NextResponse.json({ message: 'Reserva confirmada', event });
   } catch (error) {

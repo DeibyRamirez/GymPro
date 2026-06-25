@@ -10,13 +10,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import type { User } from "@/lib/auth"
 import { Dumbbell } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 interface RegisterFormProps {
   onRegister: (user: User) => void
   onSwitchToLogin: () => void
   redirectTo?: string
   gymSlug?: string
+}
+
+type MembershipPlan = {
+  name: string
+  price?: number
+  description?: string
+  featured?: boolean
 }
 
 export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app', gymSlug }: RegisterFormProps) {
@@ -34,8 +41,23 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
   const [goal, setGoal] = useState<"perder_peso" | "ganar_masa" | "mantenimiento" | "tonificar" | "resistencia" | "otro" | "">("")
   const [activityLevel, setActivityLevel] = useState<"principiante" | "intermedio" | "avanzado" | "">("")
   const [medicalConditions, setMedicalConditions] = useState("")
+  const [plans, setPlans] = useState<MembershipPlan[]>([])
+  const [selectedPlanName, setSelectedPlanName] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      if (!gymSlug) return
+      const response = await fetch(`/api/gyms/${gymSlug}`)
+      if (response.ok) {
+        const data = await response.json()
+        setPlans((data.gym?.plans || []) as MembershipPlan[])
+      }
+    }
+
+    loadPlans()
+  }, [gymSlug])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +83,11 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
     if (role === "client") {
       if (!age || !weight || !height || !gender || !phone || !goal || !activityLevel) {
         setError("Para clientes, todos los campos de información del gimnasio son requeridos")
+        return
+      }
+
+      if (!selectedPlanName) {
+        setError("Debes seleccionar una membresía para continuar")
         return
       }
 
@@ -99,6 +126,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
           password,
           role,
           gymSlug,
+          membershipPlan: selectedPlanName ? { name: selectedPlanName } : undefined,
           // Solo incluir campos de gimnasio si es cliente
           ...(role === "client" && {
             age: parseInt(age),
@@ -129,6 +157,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
         role: data.user.role,
         avatar: data.user.avatar,
         trainerId: data.user.trainerId,
+        membershipPlan: data.user.membershipPlan,
       }
 
       onRegister(user)
@@ -295,6 +324,21 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
                     maxLength={500}
                     rows={3}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="membershipPlan">Membresía</Label>
+                  <Select value={selectedPlanName} onValueChange={setSelectedPlanName}>
+                    <SelectTrigger id="membershipPlan">
+                      <SelectValue placeholder="Selecciona un plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plans.map((plan) => (
+                        <SelectItem key={plan.name} value={plan.name}>
+                          {plan.name}{plan.price ? ` · $${plan.price}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </>
             )}

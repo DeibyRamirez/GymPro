@@ -102,6 +102,27 @@ export function GymPortalPage({ slug, gym }: GymPortalPageProps) {
           </Card>
         </div>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Membresías</CardTitle>
+            <CardDescription>Planes disponibles en este gimnasio.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {gym.plans.map((plan) => (
+              <div key={plan.name} className={`rounded-2xl border p-4 ${plan.featured ? 'border-primary bg-primary/5' : 'bg-card'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{plan.name}</p>
+                    <p className="text-xl font-bold">{typeof plan.price === 'number' ? `$${plan.price}` : 'Consultar'}</p>
+                  </div>
+                  {plan.featured ? <span className="rounded-full bg-primary px-2 py-1 text-xs text-primary-foreground">Recomendado</span> : null}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{plan.description || 'Acceso al gimnasio.'}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
         <div className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur">
           <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 px-4 py-3">
             <PortalAuthActions slug={slug} />

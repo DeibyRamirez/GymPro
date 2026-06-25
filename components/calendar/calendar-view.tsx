@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, Users } from "lucide-react"
+import { ChevronLeft, ChevronRight, CalendarDays, Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CalendarEvent } from "@/lib/calendar-data"
 

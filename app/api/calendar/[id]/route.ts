@@ -1,41 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Middleware para verificar autenticación
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || 
-                req.headers.get('authorization')?.replace('Bearer ', '');
 
-  if (!token) {
-    throw new Error('Token no proporcionado');
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-
-  if (!user || !user.isActive) {
-    throw new Error('Usuario no encontrado o inactivo');
-  }
-
-  return user;
-}
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET - Obtener evento por ID
 export async function GET(req: NextRequest, { params }: Props) {
   try {
+    const { id } = await params;
     await connectDB();
     const user = await verifyAuth(req);
 
-    const event = await CalendarEvent.findById(params.id)
+    const event = await CalendarEvent.findById(id)
       .populate('userId', 'name email')
       .populate('trainerId', 'name email')
       .populate('routineId', 'name description')
@@ -78,10 +61,11 @@ export async function GET(req: NextRequest, { params }: Props) {
 // PUT - Actualizar evento
 export async function PUT(req: NextRequest, { params }: Props) {
   try {
+    const { id } = await params;
     await connectDB();
     const user = await verifyAuth(req);
 
-    const event = await CalendarEvent.findById(params.id);
+    const event = await CalendarEvent.findById(id);
 
     if (!event) {
       return NextResponse.json(
@@ -114,7 +98,7 @@ export async function PUT(req: NextRequest, { params }: Props) {
 
     // Actualizar el evento
     const updatedEvent = await CalendarEvent.findByIdAndUpdate(
-      params.id,
+      id,
       updateData,
       { new: true, runValidators: true }
     ).populate('userId', 'name email')
@@ -149,10 +133,11 @@ export async function PUT(req: NextRequest, { params }: Props) {
 // DELETE - Eliminar evento
 export async function DELETE(req: NextRequest, { params }: Props) {
   try {
+    const { id } = await params;
     await connectDB();
     const user = await verifyAuth(req);
 
-    const event = await CalendarEvent.findById(params.id);
+    const event = await CalendarEvent.findById(id);
 
     if (!event) {
       return NextResponse.json(
@@ -178,7 +163,7 @@ export async function DELETE(req: NextRequest, { params }: Props) {
     }
 
     // Eliminar el evento
-    await CalendarEvent.findByIdAndDelete(params.id);
+    await CalendarEvent.findByIdAndDelete(id);
 
     return NextResponse.json({
       message: 'Evento eliminado exitosamente'
@@ -196,10 +181,11 @@ export async function DELETE(req: NextRequest, { params }: Props) {
 // PATCH - Marcar evento como completado/no completado
 export async function PATCH(req: NextRequest, { params }: Props) {
   try {
+    const { id } = await params;
     await connectDB();
     const user = await verifyAuth(req);
 
-    const event = await CalendarEvent.findById(params.id);
+    const event = await CalendarEvent.findById(id);
 
     if (!event) {
       return NextResponse.json(
@@ -228,7 +214,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
 
     // Actualizar solo el estado de completado
     const updatedEvent = await CalendarEvent.findByIdAndUpdate(
-      params.id,
+      id,
       { completed: !!completed },
       { new: true }
     ).populate('userId', 'name email')

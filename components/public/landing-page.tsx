@@ -18,7 +18,7 @@ type GymCard = {
   description?: string
   logo?: string
   coverImage?: string
-  plans: Array<{ name: string }>
+  plans: Array<{ name: string; price?: number; description?: string; featured?: boolean }>
 }
 
 export function LandingPage() {

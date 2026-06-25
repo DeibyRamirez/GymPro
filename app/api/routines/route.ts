@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Routine from '@/lib/models/Routine';
 import Exercise from '@/lib/models/Exercise';
-import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
+import { buildPagination, parsePagination } from '@/lib/pagination';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
 type JwtPayload = { userId: string }
 type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }>; message?: string }
@@ -28,24 +27,7 @@ type RoutineExerciseLike = {
   } | null
 }
 
-// Middleware para verificar autenticación
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value ||
-    req.headers.get('authorization')?.replace('Bearer ', '');
 
-  if (!token) {
-    throw new Error('Token no proporcionado');
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-  const user = await User.findById(decoded.userId);
-
-  if (!user || !user.isActive) {
-    throw new Error('Usuario no encontrado o inactivo');
-  }
-
-  return user;
-}
 
 // GET - Obtener todas las rutinas
 export async function GET(req: NextRequest) {
@@ -54,8 +36,7 @@ export async function GET(req: NextRequest) {
     const user = await verifyAuth(req);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const { page, limit, skip } = parsePagination(searchParams, 10);
     const search = searchParams.get('search') || '';
     const difficulty = searchParams.get('difficulty') || '';
 
@@ -91,9 +72,6 @@ export async function GET(req: NextRequest) {
 
     filters.isActive = true;
 
-    const skip = (page - 1) * limit;
-    
-    // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios
     const [routines, total] = await Promise.all([
       Routine.find(filters)
         .populate('createdBy', 'name email')
@@ -129,12 +107,7 @@ export async function GET(req: NextRequest) {
     // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios
     return NextResponse.json({
       routines: formattedRoutines,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: limit,
-      },
+      pagination: buildPagination(page, limit, total),
     });
 
 

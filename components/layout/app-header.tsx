@@ -13,6 +13,7 @@ import {
 import type { User } from "@/lib/auth"
 import { Dumbbell, LogOut, Settings, UserIcon } from "lucide-react"
 import { useState } from "react"
+import { NotificationBell } from "@/components/layout/notification-bell"
 
 interface AppHeaderProps {
   user: User
@@ -49,7 +50,10 @@ export function AppHeader({ user, onLogout }: AppHeaderProps) {
           </div>
         </div>
 
-        <DropdownMenu>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative mr-2 h-11 w-11 rounded-full p-0 ring-1 ring-border/60 transition hover:bg-muted/70 hover:ring-primary/30 lg:mr-4">
               <Avatar className="h-10 w-10">
@@ -95,7 +99,8 @@ export function AppHeader({ user, onLogout }: AppHeaderProps) {
               <span>Cerrar Sesión</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   )

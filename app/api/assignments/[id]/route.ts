@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Assignment from '@/lib/models/Assignment';
 import User from '@/lib/models/User';
 import Routine from '@/lib/models/Routine';
 import MealPlan from '@/lib/models/MealPlan';
-import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
-
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
 // Definición de los filtros que se pueden aplicar al obtener las asignaciones
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {

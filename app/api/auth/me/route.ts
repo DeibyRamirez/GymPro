@@ -1,46 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import connectDB from '@/lib/mongodb';
-import User from '@/lib/models/User';
-import Gym from '@/lib/models/Gym';
-import { logApiError, logApiRequest } from '@/lib/api-debug';
-
-const JWT_SECRET = process.env.JWT_SECRET!;
+/**
+ * GET /api/auth/me
+ *
+ * Restaura la sesión del frontend al recargar la página.
+ * Usa verifyAuth centralizado: si el token expiró o el user está inactivo → 401.
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import connectDB from '@/lib/mongodb'
+import Gym from '@/lib/models/Gym'
+import { logApiError, logApiRequest } from '@/lib/api-debug'
+import { handleAuthError, toPublicUser, verifyAuth } from '@/lib/auth-server'
 
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
+    await connectDB()
+    logApiRequest('/api/auth/me GET', { hasToken: !!req.cookies.get('auth-token')?.value })
 
-    const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-    logApiRequest('/api/auth/me GET', { hasToken: !!token });
+    const user = await verifyAuth(req)
+    const gym = user.gymId ? await Gym.findById(user.gymId).select('slug name') : null
 
-    if (!token) {
-      return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const user = await User.findById(decoded.userId).select('-password');
-    const gym = user?.gymId ? await Gym.findById(user.gymId).select('slug name') : null;
-
-    if (!user || !user.isActive) {
-      return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    return NextResponse.json({
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        trainerId: user.trainerId?.toString(),
-        gymId: user.gymId?.toString(),
-        gymSlug: gym?.slug || null,
-        gymName: gym?.name || null,
-      },
-    });
+    return NextResponse.json({ user: toPublicUser(user, gym) })
   } catch (error) {
-    logApiError('/api/auth/me GET', error);
-    return NextResponse.json({ user: null }, { status: 401 });
+    logApiError('/api/auth/me GET', error)
+    const authError = handleAuthError(error)
+    return NextResponse.json({ user: null }, { status: authError.status })
   }
 }

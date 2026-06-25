@@ -1,21 +1,11 @@
 import Assignment from '@/lib/models/Assignment';
-import User from '@/lib/models/User';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Función para verificar la autenticación del usuario a través del token JWT
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
+
 
 function getWeekdayName(day: number) {
   return ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][day]

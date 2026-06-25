@@ -1,33 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
+import { buildPagination, parsePagination } from '@/lib/pagination';
+import { notifyClassCreated } from '@/lib/notifications/triggers';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
 type JwtPayload = { userId: string }
 type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }> }
 
-// Middleware para verificar autenticación
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || 
-                req.headers.get('authorization')?.replace('Bearer ', '');
 
-  if (!token) {
-    throw new Error('Token no proporcionado');
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-  const user = await User.findById(decoded.userId);
-
-  if (!user || !user.isActive) {
-    throw new Error('Usuario no encontrado o inactivo');
-  }
-
-  return user;
-}
 
 // GET - Obtener eventos del calendario
 export async function GET(req: NextRequest) {
@@ -46,6 +30,7 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('endDate');
     const type = searchParams.get('type');
     const completed = searchParams.get('completed');
+    const { page, limit, skip } = parsePagination(searchParams, 100);
 
     // Construir filtros
     const filters: Record<string, unknown> = {};
@@ -92,14 +77,22 @@ export async function GET(req: NextRequest) {
       filters.completed = completed === 'true';
     }
 
-    const events = await CalendarEvent.find(filters)
-      .populate('userId', 'name email')
-      .populate('trainerId', 'name email')
-      .populate('routineId', 'name description')
-      .populate('mealPlanId', 'name description')
-      .sort({ date: 1 });
+    const [events, total] = await Promise.all([
+      CalendarEvent.find(filters)
+        .populate('userId', 'name email')
+        .populate('trainerId', 'name email')
+        .populate('routineId', 'name description')
+        .populate('mealPlanId', 'name description')
+        .sort({ date: 1 })
+        .skip(skip)
+        .limit(limit),
+      CalendarEvent.countDocuments(filters),
+    ]);
 
-    return NextResponse.json({ events });
+    return NextResponse.json({
+      events,
+      pagination: buildPagination(page, limit, total),
+    });
 
   } catch (error) {
     logApiError('/api/calendar GET', error);
@@ -207,6 +200,16 @@ export async function POST(req: NextRequest) {
 
     if (!createdEvent) {
       return NextResponse.json({ error: 'No se pudo crear el evento' }, { status: 500 });
+    }
+
+    if (type === 'class' && eventUserId) {
+      await notifyClassCreated({
+        userId: eventUserId,
+        gymId: user.gymId,
+        title,
+        date: new Date(date),
+        eventId: String(createdEvent._id),
+      }).catch((err) => console.error('[notifications] class_new:', err));
     }
 
     return NextResponse.json({

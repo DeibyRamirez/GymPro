@@ -1,35 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import Assignment from '@/lib/models/Assignment';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 import Routine from '@/lib/models/Routine';
 import MealPlan from '@/lib/models/MealPlan';
-import jwt from 'jsonwebtoken';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
 type JwtPayload = { userId: string }
 
-// Middleware para verificar autenticación
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || 
-                req.headers.get('authorization')?.replace('Bearer ', '');
 
-  if (!token) {
-    throw new Error('Token no proporcionado');
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-  const user = await User.findById(decoded.userId);
-
-  if (!user || !user.isActive) {
-    throw new Error('Usuario no encontrado o inactivo');
-  }
-
-  return user;
-}
 
 // GET - Obtener estadísticas del dashboard
 export async function GET(req: NextRequest) {
@@ -111,7 +93,7 @@ export async function GET(req: NextRequest) {
         myAssignments,
         recentEvents,
         clientsList,
-        clientProgress: await getClientProgressData(user._id, user.gymId ? user.gymId.toString() : null)
+        clientProgress: await getClientProgressData(user._id.toString(), user.gymId ? user.gymId.toString() : null)
       };
 
     } else {
@@ -152,8 +134,8 @@ export async function GET(req: NextRequest) {
         upcomingEvents,
         totalEvents,
         trainer,
-        weeklyProgress: await getWeeklyProgressData(user._id, user.gymId ? user.gymId.toString() : null),
-        monthlyStats: await getMonthlyStatsData(user._id, user.gymId ? user.gymId.toString() : null)
+        weeklyProgress: await getWeeklyProgressData(user._id.toString(), user.gymId ? user.gymId.toString() : null),
+        monthlyStats: await getMonthlyStatsData(user._id.toString(), user.gymId ? user.gymId.toString() : null)
       };
     }
 

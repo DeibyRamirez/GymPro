@@ -1,26 +1,30 @@
+/**
+ * GET/POST /api/assignments — Asignaciones trainer → client
+ *
+ * GET filtra por rol:
+ * - client  → solo sus asignaciones (clientId = user._id)
+ * - trainer → solo las que él creó/gestiona
+ * - admin   → todas del gym
+ *
+ * POST valida que client y trainer pertenezcan al gym del actor
+ * y que un trainer no asigne a clientes de otro trainer.
+ */
 import { NextRequest, NextResponse } from 'next/server';
+import { assertSameGym, handleAuthError, verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Assignment from '@/lib/models/Assignment';
 import User from '@/lib/models/User';
 import Routine from '@/lib/models/Routine';
 import MealPlan from '@/lib/models/MealPlan';
 import Exercise from '@/lib/models/Exercise';
-import jwt from 'jsonwebtoken';
+import { assertCsrf } from '@/lib/csrf';
+import { auditLog } from '@/lib/audit-log';
+import { buildPagination, parsePagination } from '@/lib/pagination';
+import { notifyAssignmentCreated } from '@/lib/notifications/triggers';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 type ApiErrorLike = { message?: string; name?: string; errors?: Record<string, { message: string }> }
 
-// Función para verificar la autenticación del usuario a través del token JWT
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('Token no proporcionado');
 
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-  // Verificar que el usuario exista y esté activo
-  if (!user || !user.isActive) throw new Error('Usuario no encontrado o inactivo');
-  return user;
-}
 
 // Definición de los filtros que se pueden aplicar al obtener las asignaciones
 type AssignmentFilters = Record<string, unknown>
@@ -31,26 +35,37 @@ export async function GET(req: NextRequest) {
     const user = await verifyAuth(req);
     const { searchParams } = new URL(req.url);
     const trainerId = searchParams.get('trainerId');
+    const { page, limit, skip } = parsePagination(searchParams, 50);
 
     // Construir los filtros para la consulta de asignaciones según el rol del usuario y los parámetros proporcionados.
     const filters: AssignmentFilters = {};
     if (user.gymId) filters.gymId = user.gymId;
-    if (user.role === 'trainer') filters.trainerId = user._id;
+    if (user.role === 'client') filters.clientId = user._id;
+    else if (user.role === 'trainer') filters.trainerId = user._id;
     else if (trainerId) filters.trainerId = trainerId;
 
-    // Obtener las asignaciones aplicando los filtros correspondientes, 
-    // y poblar los campos relacionados para obtener la información completa de cada asignación, 
-    // incluyendo detalles del cliente, entrenador, rutina y plan alimenticio asociados.
-    const assignments = await Assignment.find(filters)
-      .populate('clientId', 'name email avatar role trainerId')
-      .populate('trainerId', 'name email avatar role')
-      .populate({ path: 'routineId', select: 'name description duration difficulty exercises tags createdBy isTemplate sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment instructions sets reps rest difficulty isTemplate sourceExerciseId' } })
-      .populate('mealPlanId', 'name description calories duration meals')
-      .sort({ createdAt: -1 });
+    const [assignments, total] = await Promise.all([
+      Assignment.find(filters)
+        .populate('clientId', 'name email avatar role trainerId')
+        .populate('trainerId', 'name email avatar role')
+        .populate({ path: 'routineId', select: 'name description duration difficulty exercises tags createdBy isTemplate sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment instructions sets reps rest difficulty isTemplate sourceExerciseId' } })
+        .populate('mealPlanId', 'name description calories duration meals')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Assignment.countDocuments(filters),
+    ]);
 
-    return NextResponse.json({ assignments });
+    return NextResponse.json({
+      assignments,
+      pagination: buildPagination(page, limit, total),
+    });
   } catch (error) {
     console.error('Error al obtener asignaciones:', error);
+    const authError = handleAuthError(error);
+    if (authError.status !== 500) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
+    }
     const err = error as ApiErrorLike;
     return NextResponse.json({ error: err.message || 'Error al obtener asignaciones' }, { status: 500 });
   }
@@ -58,6 +73,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    assertCsrf(req);
     await connectDB();
     const user = await verifyAuth(req);
 
@@ -76,6 +92,13 @@ export async function POST(req: NextRequest) {
     const trainer = await User.findById(trainerId);
     if (!client || client.role !== 'client') return NextResponse.json({ error: 'Cliente inválido' }, { status: 400 });
     if (!trainer || trainer.role !== 'trainer') return NextResponse.json({ error: 'Entrenador inválido' }, { status: 400 });
+
+    assertSameGym(user, client.gymId);
+    assertSameGym(user, trainer.gymId);
+
+    if (user.role === 'trainer' && client.trainerId?.toString() !== user._id.toString()) {
+      return NextResponse.json({ error: 'No puedes asignar contenido a este cliente' }, { status: 403 });
+    }
 
     // Validar que la rutina y el plan alimenticio (si se proporcionan) existan y pertenezcan al mismo gimnasio que el usuario autenticado, 
     // para garantizar que el cliente reciba asignaciones válidas y coherentes con los recursos disponibles en su gimnasio, 
@@ -184,9 +207,29 @@ export async function POST(req: NextRequest) {
       status: 'active',
     });
 
+    auditLog('assignment.create', {
+      actorId: user._id.toString(),
+      assignmentId: assignment._id.toString(),
+      clientId,
+      trainerId,
+    });
+
+    await notifyAssignmentCreated({
+      clientId,
+      gymId: user.gymId,
+      trainerName: trainer.name,
+      assignmentId: assignment._id.toString(),
+      hasRoutine: Boolean(clonedRoutineId || routineId),
+      hasMealPlan: Boolean(mealPlanId),
+    }).catch((err) => console.error('[notifications] assignment:', err));
+
     return NextResponse.json({ assignment }, { status: 201 });
   } catch (error) {
     console.error('Error al crear asignación:', error);
+    const authError = handleAuthError(error);
+    if (authError.status !== 500) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
+    }
     const err = error as ApiErrorLike;
 
     if (err.name === 'ValidationError' && err.errors) {

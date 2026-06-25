@@ -1,30 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Exercise from '@/lib/models/Exercise';
-import User from '@/lib/models/User';
-import jwt from 'jsonwebtoken';
+import { buildPagination, parsePagination } from '@/lib/pagination';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Middleware para verificar autenticación
-async function verifyAuth(req: NextRequest) {
-  const token = req.cookies.get('auth-token')?.value || 
-                req.headers.get('authorization')?.replace('Bearer ', '');
 
-  if (!token) {
-    throw new Error('Token no proporcionado');
-  }
-
-  const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-  const user = await User.findById(decoded.userId);
-
-  if (!user || !user.isActive) {
-    throw new Error('Usuario no encontrado o inactivo');
-  }
-
-  return user;
-}
 
 // GET - Obtener todos los ejercicios
 export async function GET(req: NextRequest) {
@@ -33,8 +15,7 @@ export async function GET(req: NextRequest) {
     const user = await verifyAuth(req);
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const { page, limit, skip } = parsePagination(searchParams, 100);
     const search = searchParams.get('search') || '';
     const muscleGroup = searchParams.get('muscleGroup') || '';
     logApiRequest('/api/exercises GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, query: { page, limit, search, muscleGroup } });
@@ -50,8 +31,6 @@ export async function GET(req: NextRequest) {
       filters.muscleGroups = muscleGroup;
     }
 
-    const skip = (page - 1) * limit;
-
     const [exercises, total] = await Promise.all([
       Exercise.find(filters)
         .populate('createdBy', 'name email')
@@ -63,12 +42,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       exercises,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: limit
-      }
+      pagination: buildPagination(page, limit, total),
     });
 
   } catch (error) {
