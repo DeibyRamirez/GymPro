@@ -64,8 +64,10 @@ export async function createNotification(input: CreateNotificationInput): Promis
 }
 
 function buildEmailHtml(name: string, title: string, body: string, link?: string | null): string {
+  const isConfirmLink = link?.includes('/api/calendar/invite/confirm');
+  const ctaLabel = isConfirmLink ? 'Confirmar asistencia' : 'Ver en GymPro';
   const cta = link
-    ? `<p style="margin-top:24px"><a href="${link}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Ver en GymPro</a></p>`
+    ? `<p style="margin-top:24px"><a href="${link}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">${ctaLabel}</a></p>`
     : '';
 
   return `

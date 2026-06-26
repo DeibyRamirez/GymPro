@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-server';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import connectDB from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
 import Gym from '@/lib/models/Gym';
@@ -85,6 +86,18 @@ export async function POST(req: NextRequest) {
       lowStockThreshold: lowStockThreshold ?? 5,
       image,
       gymId,
+    });
+
+    recordActivitySafe({
+      gymId,
+      actorId: user._id,
+      actorName: user.name,
+      actorAvatar: user.avatar,
+      action: 'product.create',
+      summary: `agregó el producto "${name}" al inventario`,
+      targetType: 'Product',
+      targetId: product._id,
+      targetLabel: name,
     });
 
     return NextResponse.json({ product }, { status: 201 });

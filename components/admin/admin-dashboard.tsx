@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import type { User } from "@/lib/auth"
 import { ArrowRight, ChartNoAxesCombined, Dumbbell, LayoutDashboard, PackagePlus, Plus, ShieldCheck, ShoppingBag, Users, Warehouse } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ElementType } from "react"
 import { ActivityFeed } from "./activity-feed"
 import { InventoryPosPanel } from "./inventory-pos-panel"
 import { StatsCard } from "./stats-card"
@@ -23,7 +23,7 @@ type CurrentMe = { user?: { gymSlug?: string | null } }
 
 type DashboardStats = { totalUsers?: number; totalTrainers?: number; totalClients?: number; recentUsers?: User[] }
 
-function NavAction({ icon: Icon, label, onClick, accent }: { icon: React.ElementType; label: string; onClick?: () => void; accent: string }) {
+function NavAction({ icon: Icon, label, onClick, accent }: { icon: ElementType; label: string; onClick?: () => void; accent: string }) {
   return (
     <button onClick={onClick} className="group flex flex-col items-center gap-2 rounded-2xl border bg-card/60 px-5 py-4 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-card hover:shadow-md">
       <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform group-hover:scale-110 ${accent}`}><Icon className="h-5 w-5" /></div>
@@ -33,7 +33,7 @@ function NavAction({ icon: Icon, label, onClick, accent }: { icon: React.Element
 }
 
 export function AdminDashboard() {
-  
+
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'dashboard' | 'inventory'>('dashboard')
@@ -339,10 +339,12 @@ export function AdminDashboard() {
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-xl font-semibold">Actividad reciente</h3>
-          <p className="text-sm text-muted-foreground">Últimos movimientos del sistema</p>
+          <h3 className="text-xl font-semibold">Bitácora del sistema</h3>
+          <p className="text-sm text-muted-foreground">
+            Actividad reciente filtrada por gimnasio seleccionado
+          </p>
         </div>
-        <ActivityFeed />
+        <ActivityFeed gymSlug={selectedGymSlug} />
       </div>
 
       <div className="space-y-5">

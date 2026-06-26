@@ -3,27 +3,38 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ClientCard } from "./client-card"
-import { AssignRoutineDialog } from "./assign-routine-dialog"
-import { AssignMealPlanDialog } from "./assign-meal-plan-dialog"
+import {
+  AssignProgramDialog,
+  type AssignProgramPayload,
+  type ExistingAssignmentForEdit,
+} from "./assign-program-dialog"
 import { Input } from "@/components/ui/input"
 import { Search, Users, Filter } from "lucide-react"
 import type { User } from "@/lib/auth"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/hooks/use-toast"
+import { getDocumentId } from "@/lib/assignment/ref-id"
 
 interface ClientsViewProps {
   trainerId: string
+}
+
+type TrainerAssignment = ExistingAssignmentForEdit & {
+  id?: string
+  clientId?: { _id?: string; id?: string } | string
+  routineId?: { _id?: string; id?: string; sourceRoutineId?: string } | string
+  mealPlanId?: unknown
+  status?: string
 }
 
 export function ClientsView({ trainerId }: ClientsViewProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
-  const [selectedClient, setSelectedClient] = useState<User | null>(null)
-  const [routineDialogOpen, setRoutineDialogOpen] = useState(false)
-  const [mealPlanDialogOpen, setMealPlanDialogOpen] = useState(false)
-  const [clients, setClients] = useState<(User & { gymSlug?: string | null })[]>([])
-  const [assignments, setAssignments] = useState<Array<{ clientId?: { _id?: string; id?: string } | string; routineId?: string; mealPlanId?: string }>>([])
+  const [selectedClient, setSelectedClient] = useState<(User & { goal?: string | null }) | null>(null)
+  const [programDialogOpen, setProgramDialogOpen] = useState(false)
+  const [clients, setClients] = useState<(User & { gymSlug?: string | null; goal?: string | null })[]>([])
+  const [assignments, setAssignments] = useState<TrainerAssignment[]>([])
 
   useEffect(() => {
     let mounted = true
@@ -31,19 +42,19 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
     const load = async () => {
       try {
         const [clientsRes, assignmentsRes] = await Promise.all([
-          fetch(`/api/users?role=client&trainerId=${trainerId}`, { credentials: 'include' }),
-          fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: 'include' }),
+          fetch(`/api/users?role=client&trainerId=${trainerId}`, { credentials: "include" }),
+          fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: "include" }),
         ])
 
         const clientsData = await clientsRes.json().catch(() => null)
         const assignmentsData = await assignmentsRes.json().catch(() => null)
 
         if (!clientsRes.ok) {
-          throw new Error(clientsData?.error || 'No se pudieron cargar los clientes')
+          throw new Error(clientsData?.error || "No se pudieron cargar los clientes")
         }
 
         if (!assignmentsRes.ok) {
-          throw new Error(assignmentsData?.error || 'No se pudieron cargar las asignaciones')
+          throw new Error(assignmentsData?.error || "No se pudieron cargar las asignaciones")
         }
 
         if (mounted) {
@@ -51,11 +62,11 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
           setAssignments(assignmentsData?.assignments || [])
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'No se pudieron cargar los datos del panel'
+        const message = error instanceof Error ? error.message : "No se pudieron cargar los datos del panel"
         toast({
-          title: 'Error al cargar clientes',
+          title: "Error al cargar clientes",
           description: message,
-          variant: 'destructive',
+          variant: "destructive",
         })
       }
     }
@@ -70,11 +81,11 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
   }, [trainerId])
 
   const refreshAssignments = async () => {
-    const assignmentsRes = await fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: 'include' })
+    const assignmentsRes = await fetch(`/api/assignments?trainerId=${trainerId}`, { credentials: "include" })
     const assignmentsData = await assignmentsRes.json().catch(() => null)
 
     if (!assignmentsRes.ok) {
-      throw new Error(assignmentsData?.error || 'No se pudieron refrescar las asignaciones')
+      throw new Error(assignmentsData?.error || "No se pudieron refrescar las asignaciones")
     }
 
     setAssignments(assignmentsData?.assignments || [])
@@ -82,8 +93,11 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
 
   const getAssignmentClientId = (clientId?: { _id?: string; id?: string } | string) => {
     if (typeof clientId === "string") return clientId
-    return clientId?._id || clientId?.id
+    return String(clientId?._id || clientId?.id || "")
   }
+
+  const getAssignmentRecordId = (assignment?: TrainerAssignment | null) =>
+    getDocumentId(assignment) || assignment?._id || assignment?.id || null
 
   const filteredClients = clients.filter((client) => {
     const matchesSearch =
@@ -92,81 +106,81 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
 
     if (filterStatus === "all") return matchesSearch
 
-    const assignment = assignments.find((a) => getAssignmentClientId(a.clientId) === client.id)
+    const assignment = getClientAssignment(client.id)
     if (filterStatus === "active") return matchesSearch && assignment
     if (filterStatus === "inactive") return matchesSearch && !assignment
 
     return matchesSearch
   })
 
-  const handleAssignRoutine = (client: User) => {
+  const handleAssignProgram = (client: User & { goal?: string | null }) => {
     setSelectedClient(client)
-    setRoutineDialogOpen(true)
+    setProgramDialogOpen(true)
   }
 
-  const handleAssignMealPlan = (client: User) => {
-    setSelectedClient(client)
-    setMealPlanDialogOpen(true)
-  }
-
-  const handleRoutineAssigned = async (payload: { routineId: string; durationWeeks: number; weeklySchedule: Array<{ dayOfWeek: number; isRestDay: boolean; title?: string }> }) => {
+  const handleProgramAssigned = async (payload: AssignProgramPayload) => {
     if (!selectedClient) return
 
-    const res = await fetch('/api/assignments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        clientId: selectedClient.id,
-        trainerId,
-        routineId: payload.routineId,
-        startDate: new Date().toISOString(),
-        durationWeeks: payload.durationWeeks,
-        weeklySchedule: payload.weeklySchedule,
-      }),
-    })
+    const existing = getClientAssignment(selectedClient.id)
+    const existingId = getAssignmentRecordId(existing)
+    const isUpdate = Boolean(existingId && existing?.status !== "cancelled" && existing?.status !== "completed")
 
-    const data = await res.json().catch(() => null)
+    const body = {
+      routineId: payload.routineId,
+      mealPlanId: payload.mealPlanId,
+      durationWeeks: payload.durationWeeks,
+      weeklySchedule: payload.weeklySchedule,
+      ...(isUpdate ? {} : { clientId: selectedClient.id, trainerId, startDate: new Date().toISOString() }),
+    }
+
+    let didUpdate = isUpdate
+
+    let res = await fetch(
+      isUpdate ? `/api/assignments/${existingId}/program` : "/api/assignments",
+      {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      },
+    )
+
+    let data = await res.json().catch(() => null)
+
+    if (!res.ok && res.status === 409 && data?.assignmentId) {
+      didUpdate = true
+      res = await fetch(`/api/assignments/${data.assignmentId}/program`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      })
+      data = await res.json().catch(() => null)
+    }
 
     if (!res.ok) {
-      throw new Error(data?.error || 'No se pudo asignar la rutina')
+      throw new Error(data?.error || (isUpdate ? "No se pudo actualizar el programa" : "No se pudo asignar el programa"))
     }
 
-    await refreshAssignments()
-  }
-
-  const handleMealPlanAssigned = async (mealPlanId: string) => {
-    if (!selectedClient) return
-
-    const currentAssignment = getClientAssignment(selectedClient.id)
-    const assignmentId =
-      typeof currentAssignment === "object" && currentAssignment
-        ? (currentAssignment as { id?: string; _id?: string }).id || (currentAssignment as { id?: string; _id?: string })._id
-        : undefined
-
-    if (!assignmentId) {
-      throw new Error('No existe una asignación activa para este cliente. Primero asigna una rutina.')
-    }
-
-    const res = await fetch(`/api/assignments/${assignmentId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ mealPlanId }),
+    toast({
+      title: didUpdate ? "Programa actualizado" : "Programa asignado",
+      description: didUpdate
+        ? `El programa de ${selectedClient.name} fue actualizado.`
+        : `Se asignó el programa a ${selectedClient.name}.`,
     })
-
-    const data = await res.json().catch(() => null)
-
-    if (!res.ok) {
-      throw new Error(data?.error || 'No se pudo asignar el plan alimenticio')
-    }
 
     await refreshAssignments()
   }
 
   const getClientAssignment = (clientId: string) => {
-    return assignments.find((a) => getAssignmentClientId(a.clientId) === clientId)
+    return assignments.find((a) => {
+      const matchesClient = getAssignmentClientId(a.clientId) === clientId
+      const status = a.status || "active"
+      return matchesClient && !["cancelled", "completed"].includes(status)
+    })
   }
+
+  const selectedAssignment = selectedClient ? getClientAssignment(selectedClient.id) : null
 
   return (
     <div className="space-y-6">
@@ -219,8 +233,8 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
                 client={client}
                 hasRoutine={!!assignment?.routineId}
                 hasMealPlan={!!assignment?.mealPlanId}
-                onAssignRoutine={() => handleAssignRoutine(client)}
-                onAssignMealPlan={() => handleAssignMealPlan(client)}
+                hasActiveProgram={!!assignment}
+                onAssignProgram={() => handleAssignProgram(client)}
                 onViewDetails={() => {
                   if (!client.gymSlug) return
                   router.push(`/portal/${client.gymSlug}/clients/${client.id}`)
@@ -232,20 +246,14 @@ export function ClientsView({ trainerId }: ClientsViewProps) {
       )}
 
       {selectedClient && (
-        <>
-          <AssignRoutineDialog
-            open={routineDialogOpen}
-            onOpenChange={setRoutineDialogOpen}
-            clientName={selectedClient.name}
-            onAssign={handleRoutineAssigned}
-          />
-          <AssignMealPlanDialog
-            open={mealPlanDialogOpen}
-            onOpenChange={setMealPlanDialogOpen}
-            clientName={selectedClient.name}
-            onAssign={handleMealPlanAssigned}
-          />
-        </>
+        <AssignProgramDialog
+          open={programDialogOpen}
+          onOpenChange={setProgramDialogOpen}
+          clientName={selectedClient.name}
+          clientGoal={selectedClient.goal}
+          existingAssignment={selectedAssignment || null}
+          onAssign={handleProgramAssigned}
+        />
       )}
     </div>
   )

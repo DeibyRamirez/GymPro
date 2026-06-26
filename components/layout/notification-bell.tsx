@@ -3,7 +3,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { Bell, CheckCheck, Loader2 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -15,11 +14,15 @@ type NotificationItem = {
   body: string
   readAt: string | null
   createdAt: string
+  metadata?: {
+    eventId?: string
+    link?: string
+  }
 }
 
 const typeLabels: Record<string, string> = {
-  class_new: "Clase",
-  class_booking: "Reserva",
+  class_new: "Invitación",
+  class_booking: "Confirmado",
   assignment: "Asignación",
   broadcast: "Comunidad",
   system: "Sistema",
@@ -41,6 +44,8 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(false)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [respondingEventId, setRespondingEventId] = useState<string | null>(null)
+  const [handledEventIds, setHandledEventIds] = useState<Set<string>>(() => new Set())
   const hasPrefetchedCount = useRef(false)
 
   const refreshUnreadCount = useCallback(async () => {
@@ -73,10 +78,20 @@ export function NotificationBell() {
       setOpen(nextOpen)
       if (nextOpen) void fetchNotifications()
     },
-    [fetchNotifications]
+    [fetchNotifications],
   )
 
-  // Polling: setState solo dentro del callback del intervalo (suscripción externa).
+  useEffect(() => {
+    if (!open) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [open])
+
   useEffect(() => {
     const interval = setInterval(() => {
       void fetchUnreadCountFromApi().then((count) => {
@@ -94,8 +109,8 @@ export function NotificationBell() {
     })
     setNotifications((current) =>
       current.map((item) =>
-        item.id === id ? { ...item, readAt: new Date().toISOString() } : item
-      )
+        item.id === id ? { ...item, readAt: new Date().toISOString() } : item,
+      ),
     )
     setUnreadCount((count) => Math.max(0, count - 1))
   }
@@ -106,9 +121,29 @@ export function NotificationBell() {
       credentials: "include",
     })
     setNotifications((current) =>
-      current.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() }))
+      current.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() })),
     )
     setUnreadCount(0)
+  }
+
+  const respondToEvent = async (notificationId: string, eventId: string, action: "accept" | "decline") => {
+    setRespondingEventId(eventId)
+    try {
+      const res = await fetch(`/api/calendar/${eventId}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action }),
+      })
+      if (res.ok) {
+        setHandledEventIds((prev) => new Set(prev).add(eventId))
+        await markAsRead(notificationId)
+        await fetchNotifications()
+        await refreshUnreadCount()
+      }
+    } finally {
+      setRespondingEventId(null)
+    }
   }
 
   return (
@@ -130,7 +165,7 @@ export function NotificationBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0" sideOffset={10}>
+      <PopoverContent align="end" className="w-96 overflow-hidden p-0" sideOffset={10}>
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <p className="text-sm font-semibold">Notificaciones</p>
@@ -155,38 +190,69 @@ export function NotificationBell() {
             No tienes notificaciones aún
           </div>
         ) : (
-          <ScrollArea className="max-h-80">
+          <div className="max-h-[min(20rem,calc(100vh-6rem))] overflow-y-auto overscroll-y-contain [scrollbar-gutter:stable]">
             <div className="divide-y">
-              {notifications.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={cn(
-                    "w-full px-4 py-3 text-left transition hover:bg-muted/50",
-                    !item.readAt && "bg-primary/5"
-                  )}
-                  onClick={() => {
-                    if (!item.readAt) markAsRead(item.id)
-                  }}
-                >
-                  <div className="mb-1 flex items-center gap-2">
-                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
-                      {typeLabels[item.type] || item.type}
-                    </Badge>
-                    {!item.readAt && <span className="h-2 w-2 rounded-full bg-primary" />}
+              {notifications.map((item) => {
+                const eventId = item.metadata?.eventId
+                const isInvite = item.type === "class_new" && Boolean(eventId) && !handledEventIds.has(eventId!)
+
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "px-4 py-3 transition hover:bg-muted/50",
+                      !item.readAt && "bg-primary/5",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="w-full text-left"
+                      onClick={() => {
+                        if (!item.readAt) void markAsRead(item.id)
+                      }}
+                    >
+                      <div className="mb-1 flex items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                          {typeLabels[item.type] || item.type}
+                        </Badge>
+                        {!item.readAt && <span className="h-2 w-2 rounded-full bg-primary" />}
+                      </div>
+                      <p className="text-sm font-medium leading-snug">{item.title}</p>
+                      <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{item.body}</p>
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        {new Date(item.createdAt).toLocaleString("es-ES", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                    </button>
+
+                    {isInvite && (
+                      <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
+                        <Button
+                          size="sm"
+                          className="h-8"
+                          disabled={respondingEventId === eventId}
+                          onClick={() => void respondToEvent(item.id, eventId!, "accept")}
+                        >
+                          {respondingEventId === eventId ? "..." : "Confirmar"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          disabled={respondingEventId === eventId}
+                          onClick={() => void respondToEvent(item.id, eventId!, "decline")}
+                        >
+                          Rechazar
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm font-medium leading-snug">{item.title}</p>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.body}</p>
-                  <p className="mt-2 text-[10px] text-muted-foreground">
-                    {new Date(item.createdAt).toLocaleString("es-ES", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </p>
-                </button>
-              ))}
+                )
+              })}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </PopoverContent>
     </Popover>

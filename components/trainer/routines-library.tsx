@@ -72,7 +72,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
         setLoading(true)
         setError("")
 
-        const res = await fetch("/api/routines", {
+        const res = await fetch("/api/routines?templatesOnly=true", {
           method: "GET",
           credentials: "include"
         })
@@ -114,9 +114,11 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredRoutines.map((routine) => (
+        {filteredRoutines.map((routine) => {
+          const routineKey = routine.id || routine._id || routine.name
+          return (
           <Card
-            key={routine._id}
+            key={routineKey}
             className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/50"
           >
             {/* Header de la tarjeta con gradiente */}
@@ -179,7 +181,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
               </div>
             </div>
           </Card>
-        ))}
+        )})}
       </div>
 
       {/* Diálogos */}
@@ -195,7 +197,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
       {selectedRoutine && (
         <>
           <EditRoutineDialog
-            key={selectedRoutine._id}
+            key={selectedRoutine.id || selectedRoutine._id}
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
             routine={selectedRoutine}

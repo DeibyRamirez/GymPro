@@ -1,19 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { verifyAuth } from '@/lib/auth-server';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import connectDB from '@/lib/mongodb';
 import CalendarEvent from '@/lib/models/CalendarEvent';
 import User from '@/lib/models/User';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 import { buildPagination, parsePagination } from '@/lib/pagination';
-import { notifyClassCreated } from '@/lib/notifications/triggers';
+import { serializeCalendarEvent } from '@/lib/calendar/serialize-event';
+import { notifyInvitedUsers } from '@/lib/notifications/triggers';
 
+type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }> };
 
-type JwtPayload = { userId: string }
-type ValidationErrorLike = { name?: string; errors?: Record<string, { message: string }> }
+function buildCalendarFilters(user: Awaited<ReturnType<typeof verifyAuth>>) {
+  const filters: Record<string, unknown> = {};
 
+  if (user.role === 'trainer') {
+    filters.$or = [{ userId: user._id }, { trainerId: user._id }];
+  } else if (user.role === 'admin' || user.role === 'superadmin') {
+    // todos los eventos del gym (filtro gymId abajo)
+  } else {
+    filters.$or = [
+      { userId: user._id },
+      { invitedUserIds: user._id },
+      { type: 'class', gymId: user.gymId || null, invitedUserIds: { $size: 0 } },
+    ];
+  }
 
+  if (user.gymId) {
+    filters.gymId = user.gymId;
+  }
 
-// GET - Obtener eventos del calendario
+  return filters;
+}
+
+async function validateInvitedClients(
+  invitedUserIds: string[],
+  gymId: mongoose.Types.ObjectId | null | undefined,
+  trainerId?: mongoose.Types.ObjectId,
+) {
+  const clients = await User.find({
+    _id: { $in: invitedUserIds },
+    role: 'client',
+    isActive: true,
+    gymId: gymId || null,
+  }).select('_id trainerId');
+
+  if (clients.length !== invitedUserIds.length) {
+    return { ok: false as const, error: 'Uno o más clientes invitados no son válidos' };
+  }
+
+  if (trainerId) {
+    const allBelongToTrainer = clients.every(
+      (client) => client.trainerId?.toString() === trainerId.toString(),
+    );
+    if (!allBelongToTrainer) {
+      return { ok: false as const, error: 'Solo puedes invitar a tus clientes asignados' };
+    }
+  }
+
+  return { ok: true as const, ids: clients.map((client) => client._id) };
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -32,47 +80,17 @@ export async function GET(req: NextRequest) {
     const completed = searchParams.get('completed');
     const { page, limit, skip } = parsePagination(searchParams, 100);
 
-    // Construir filtros
-    const filters: Record<string, unknown> = {};
+    const filters = buildCalendarFilters(user);
 
-    // Los usuarios solo ven sus propios eventos
-    if (user.role === 'trainer') {
-      // Los trainers ven sus eventos y los de sus clientes
-      filters.$or = [
-        { userId: user._id },
-        { trainerId: user._id }
-      ];
-    } else if (user.role === 'admin') {
-      // Los admins ven todos los eventos (sin filtro de usuario)
-    } else {
-      // Los clientes ven sus propios eventos y las clases grupales del gimnasio
-      filters.$or = [
-        { userId: user._id },
-        { type: 'class', gymId: user.gymId || null },
-      ];
-    }
-
-    if (user.gymId) {
-      filters.gymId = user.gymId;
-    }
-
-    // Filtros de fecha
     if (startDate && endDate) {
-      filters.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
+      filters.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
     } else if (startDate) {
       filters.date = { $gte: new Date(startDate) };
     } else if (endDate) {
       filters.date = { $lte: new Date(endDate) };
     }
 
-    // Filtros adicionales
-    if (type) {
-      filters.type = type;
-    }
-
+    if (type) filters.type = type;
     if (completed !== null && completed !== undefined) {
       filters.completed = completed === 'true';
     }
@@ -81,6 +99,8 @@ export async function GET(req: NextRequest) {
       CalendarEvent.find(filters)
         .populate('userId', 'name email')
         .populate('trainerId', 'name email')
+        .populate('invitedUserIds', 'name email')
+        .populate('confirmedUserIds', 'name email')
         .populate('routineId', 'name description')
         .populate('mealPlanId', 'name description')
         .sort({ date: 1 })
@@ -90,32 +110,26 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({
-      events,
+      events: events.map((event) => serializeCalendarEvent(event, user)),
       pagination: buildPagination(page, limit, total),
     });
-
   } catch (error) {
     logApiError('/api/calendar GET', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
 
-// POST - Crear nuevo evento
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const user = await verifyAuth(req);
-
     const data = await req.json();
-    const { 
-      title, 
-      description, 
-      date, 
-      type, 
-      userId, 
+    const {
+      title,
+      description,
+      date,
+      type,
+      userId,
       trainerId,
       routineId,
       mealPlanId,
@@ -124,52 +138,71 @@ export async function POST(req: NextRequest) {
       attendanceCode,
       duration,
       reminder,
-      source
+      source,
+      invitedUserIds: rawInvitedUserIds,
     } = data;
 
     logApiRequest('/api/calendar POST', {
       userId: user._id.toString(),
       role: user.role,
       gymId: user.gymId?.toString() || null,
-      payload: { title, description, date, type, userId, trainerId, routineId, mealPlanId, assignmentId, capacity, attendanceCode, duration, source },
+      payload: { title, date, type, capacity, invitedCount: rawInvitedUserIds?.length || 0 },
     });
 
-    // Validar datos requeridos
     if (!title || !date || !type) {
+      return NextResponse.json({ error: 'Título, fecha y tipo son requeridos' }, { status: 400 });
+    }
+
+    const invitedUserIds = Array.isArray(rawInvitedUserIds)
+      ? rawInvitedUserIds.map(String).filter(Boolean)
+      : [];
+
+    const isGroupClass = type === 'class' && invitedUserIds.length > 0;
+
+    if (isGroupClass && user.role === 'client') {
+      return NextResponse.json({ error: 'No tienes permisos para crear eventos grupales' }, { status: 403 });
+    }
+
+    if (isGroupClass && (!capacity || Number(capacity) < 1)) {
+      return NextResponse.json({ error: 'Debes indicar el cupo máximo del evento' }, { status: 400 });
+    }
+
+    if (isGroupClass && invitedUserIds.length > Number(capacity)) {
       return NextResponse.json(
-        { error: 'Título, fecha y tipo son requeridos' },
-        { status: 400 }
+        { error: 'Los invitados no pueden superar el cupo máximo del evento' },
+        { status: 400 },
       );
     }
 
-    // Determinar el userId del evento
-    let eventUserId = userId;
-    if (!eventUserId) {
-      eventUserId = user._id; // Por defecto, el evento es para el usuario actual
-    }
+    let eventUserId = userId || user._id;
+    let validatedInvitedIds: mongoose.Types.ObjectId[] = [];
 
-    const isPrivateClientEvent = user.role === 'client' && String(eventUserId) === String(user._id);
-    if (user.role === 'client' && !isPrivateClientEvent) {
-      return NextResponse.json(
-        { error: 'No tienes permisos para crear eventos para otros usuarios' },
-        { status: 403 }
+    if (isGroupClass) {
+      const validation = await validateInvitedClients(
+        invitedUserIds,
+        user.gymId,
+        user.role === 'trainer' ? user._id : undefined,
       );
-    }
-
-    // Verificar permisos para crear eventos para otros usuarios
-    if (String(eventUserId) !== String(user._id)) {
-      
-      // Verificar que el usuario objetivo existe
-      const targetUser = await User.findById(eventUserId);
-      if (!targetUser) {
-        return NextResponse.json(
-          { error: 'Usuario objetivo no encontrado' },
-          { status: 404 }
-        );
+      if (!validation.ok) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+      validatedInvitedIds = validation.ids;
+      eventUserId = user._id;
+    } else {
+      const isPrivateClientEvent = user.role === 'client' && String(eventUserId) === String(user._id);
+      if (user.role === 'client' && !isPrivateClientEvent) {
+        return NextResponse.json({ error: 'No tienes permisos para crear eventos para otros usuarios' }, { status: 403 });
+      }
+      if (String(eventUserId) !== String(user._id)) {
+        const targetUser = await User.findById(eventUserId);
+        if (!targetUser) {
+          return NextResponse.json({ error: 'Usuario objetivo no encontrado' }, { status: 404 });
+        }
       }
     }
 
-    // Crear el evento
+    const isPrivateClientEvent = user.role === 'client' && String(eventUserId) === String(user._id);
+
     const event = new CalendarEvent({
       title,
       description,
@@ -181,8 +214,11 @@ export async function POST(req: NextRequest) {
       routineId: routineId || null,
       mealPlanId: mealPlanId || null,
       assignmentId: assignmentId || null,
-      capacity: capacity || null,
+      capacity: isGroupClass ? Number(capacity) : capacity || null,
       bookedCount: 0,
+      invitedUserIds: validatedInvitedIds,
+      confirmedUserIds: [],
+      declinedUserIds: [],
       attendanceCode: attendanceCode || null,
       duration: duration || null,
       reminder: reminder || { enabled: false },
@@ -191,10 +227,26 @@ export async function POST(req: NextRequest) {
 
     await event.save();
 
-    // Obtener el evento creado con los datos poblados
+    if (user.role !== 'client' && user.gymId) {
+      recordActivitySafe({
+        gymId: user.gymId,
+        actorId: user._id,
+        actorName: user.name,
+        actorAvatar: user.avatar,
+        action: 'calendar.event_create',
+        summary: `creó el evento "${title}" (${type})`,
+        targetType: 'CalendarEvent',
+        targetId: event._id,
+        targetLabel: title,
+        metadata: { type, isGroupClass },
+      })
+    }
+
     const createdEvent = await CalendarEvent.findById(event._id)
       .populate('userId', 'name email')
       .populate('trainerId', 'name email')
+      .populate('invitedUserIds', 'name email')
+      .populate('confirmedUserIds', 'name email')
       .populate({ path: 'routineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment' } })
       .populate('mealPlanId', 'name description');
 
@@ -202,47 +254,74 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se pudo crear el evento' }, { status: 500 });
     }
 
-    if (type === 'class' && eventUserId) {
+    if (isGroupClass) {
+      await notifyInvitedUsers({
+        invitedUserIds: validatedInvitedIds.map(String),
+        gymId: user.gymId,
+        title,
+        date: new Date(date),
+        eventId: String(createdEvent._id),
+        capacity: Number(capacity),
+      }).catch((err) => console.error('[notifications] invite:', err));
+    } else if (type === 'class' && eventUserId) {
+      const { notifyClassCreated } = await import('@/lib/notifications/triggers');
       await notifyClassCreated({
         userId: eventUserId,
         gymId: user.gymId,
         title,
         date: new Date(date),
         eventId: String(createdEvent._id),
+        capacity: capacity ? Number(capacity) : undefined,
       }).catch((err) => console.error('[notifications] class_new:', err));
     }
 
-    return NextResponse.json({
-      message: 'Evento creado exitosamente',
-      event: {
-        ...createdEvent.toObject(),
-        exercises: Array.isArray((createdEvent.routineId as unknown as { exercises?: Array<{ exercise?: { name?: string }; sets?: number; reps?: string; rest?: string; instructions?: string }> } | undefined)?.exercises)
-          ? (createdEvent.routineId as unknown as { exercises?: Array<{ exercise?: { name?: string }; sets?: number; reps?: string; rest?: string; instructions?: string }> }).exercises?.map((exercise, index) => ({
-              name: exercise.exercise?.name || `Ejercicio ${index + 1}`,
-              sets: exercise.sets,
-              reps: exercise.reps,
-              rest: exercise.rest,
-              instructions: exercise.instructions,
-            }))
-          : [],
-      }
-    }, { status: 201 });
+    const serialized = serializeCalendarEvent(createdEvent, user);
 
+    return NextResponse.json(
+      {
+        message: 'Evento creado exitosamente',
+        event: {
+          ...serialized,
+          exercises: Array.isArray(
+            (createdEvent.routineId as unknown as {
+              exercises?: Array<{
+                exercise?: { name?: string };
+                sets?: number;
+                reps?: string;
+                rest?: string;
+                instructions?: string;
+              }>;
+            })?.exercises,
+          )
+            ? (
+                createdEvent.routineId as unknown as {
+                  exercises?: Array<{
+                    exercise?: { name?: string };
+                    sets?: number;
+                    reps?: string;
+                    rest?: string;
+                    instructions?: string;
+                  }>;
+                }
+              ).exercises?.map((exercise, index) => ({
+                name: exercise.exercise?.name || `Ejercicio ${index + 1}`,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                rest: exercise.rest,
+                instructions: exercise.instructions,
+              }))
+            : [],
+        },
+      },
+      { status: 201 },
+    );
   } catch (error: unknown) {
     logApiError('/api/calendar POST', error);
-
     const validationError = error as ValidationErrorLike;
     if (validationError.name === 'ValidationError' && validationError.errors) {
       const errors = Object.values(validationError.errors).map((err) => err.message);
-      return NextResponse.json(
-        { error: 'Error de validación', details: errors },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Error de validación', details: errors }, { status: 400 });
     }
-
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }

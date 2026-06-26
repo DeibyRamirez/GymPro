@@ -14,13 +14,12 @@ import { assertSameGym, handleAuthError, verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Assignment from '@/lib/models/Assignment';
 import User from '@/lib/models/User';
-import Routine from '@/lib/models/Routine';
-import MealPlan from '@/lib/models/MealPlan';
-import Exercise from '@/lib/models/Exercise';
 import { assertCsrf } from '@/lib/csrf';
 import { auditLog } from '@/lib/audit-log';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import { buildPagination, parsePagination } from '@/lib/pagination';
 import { notifyAssignmentCreated } from '@/lib/notifications/triggers';
+import { buildProgramFromTemplates, type WeeklyScheduleInput } from '@/lib/assignment/program-service';
 
 type ApiErrorLike = { message?: string; name?: string; errors?: Record<string, { message: string }> }
 
@@ -50,6 +49,7 @@ export async function GET(req: NextRequest) {
         .populate('trainerId', 'name email avatar role')
         .populate({ path: 'routineId', select: 'name description duration difficulty exercises tags createdBy isTemplate sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment instructions sets reps rest difficulty isTemplate sourceExerciseId' } })
         .populate('mealPlanId', 'name description calories duration meals')
+        .populate({ path: 'weeklySchedule.routineId', select: 'name sourceRoutineId isTemplate' })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -100,110 +100,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No puedes asignar contenido a este cliente' }, { status: 403 });
     }
 
-    // Validar que la rutina y el plan alimenticio (si se proporcionan) existan y pertenezcan al mismo gimnasio que el usuario autenticado, 
-    // para garantizar que el cliente reciba asignaciones válidas y coherentes con los recursos disponibles en su gimnasio, 
-    // evitando así posibles errores o inconsistencias en la creación de la asignación.
-    const sourceRoutine = routineId ? await Routine.findById(routineId).populate('exercises.exercise') : null;
-    if (routineId && !sourceRoutine) return NextResponse.json({ error: 'Rutina inválida' }, { status: 400 });
-    if (sourceRoutine && String(sourceRoutine.gymId || null) !== String(user.gymId || null)) return NextResponse.json({ error: 'Rutina inválida' }, { status: 400 });
-    const sourceMealPlan = mealPlanId ? await MealPlan.findById(mealPlanId) : null;
-    if (mealPlanId && !sourceMealPlan) return NextResponse.json({ error: 'Plan alimenticio inválido' }, { status: 400 });
-    if (sourceMealPlan && String(sourceMealPlan.gymId || null) !== String(user.gymId || null)) return NextResponse.json({ error: 'Plan alimenticio inválido' }, { status: 400 });
+    const existingActive = await Assignment.findOne({
+      clientId,
+      gymId: user.gymId || null,
+      status: 'active',
+    }).select('_id');
 
-    // Clonar la rutina si se proporciona una rutina fuente, para crear una nueva rutina personalizada para el cliente, 
-    // lo que permite al entrenador modificar la rutina sin afectar la plantilla original, y asegurando que cada cliente tenga su propia versión de la rutina asignada, 
-    // facilitando así la personalización y el seguimiento del progreso de cada cliente de manera independiente.
-    let clonedRoutineId: string | null = null;
-
-    if (sourceRoutine) {
-      const sourceRoutineDoc = sourceRoutine.toObject() as {
-        _id: unknown
-        name: string
-        description: string
-        duration: string
-        difficulty: 'beginner' | 'intermediate' | 'advanced'
-        tags?: string[]
-        exercises: Array<{
-          exercise: { _id: unknown; name: string; sets: number; reps: string; rest: string; image: string; instructions: string; muscleGroups: string[]; equipment: string[]; difficulty: 'beginner' | 'intermediate' | 'advanced' }
-          sets: number
-          reps: string
-          rest: string
-          instructions: string
-          order: number
-        }>
-        createdBy: unknown
-      };
-
-      // Clonar cada ejercicio de la rutina fuente, creando nuevos documentos de ejercicio para cada uno, 
-      // y asociándolos a la nueva rutina clonada, lo que permite al entrenador modificar los ejercicios de la rutina personalizada 
-      // sin afectar los ejercicios originales de la plantilla, 
-      // y asegurando que cada cliente tenga su propia versión de los ejercicios asignados, facilitando así la personalización y 
-      // el seguimiento del progreso de cada cliente de manera independiente.
-      const clonedExercises = await Promise.all(
-        sourceRoutineDoc.exercises.map(async (item) => {
-          const sourceExercise = item.exercise;
-          const clonedExercise = await Exercise.create({
-            name: sourceExercise.name,
-            sets: sourceExercise.sets,
-            reps: sourceExercise.reps,
-            rest: sourceExercise.rest,
-            image: sourceExercise.image,
-            instructions: sourceExercise.instructions,
-            muscleGroups: sourceExercise.muscleGroups,
-            equipment: sourceExercise.equipment,
-            difficulty: sourceExercise.difficulty,
-            createdBy: user._id,
-            sourceExerciseId: sourceExercise._id,
-            isTemplate: false,
-          });
-
-          return {
-            exercise: clonedExercise._id,
-            sets: item.sets,
-            reps: item.reps,
-            rest: item.rest,
-            instructions: item.instructions,
-            order: item.order,
-          };
-        })
+    if (existingActive) {
+      return NextResponse.json(
+        {
+          error: 'Este cliente ya tiene un programa activo. Usa actualizar programa.',
+          assignmentId: existingActive._id.toString(),
+        },
+        { status: 409 },
       );
-
-      // Crear la nueva rutina clonada utilizando los datos de la rutina fuente y los ejercicios clonados, 
-      // y asociándola al cliente y al entrenador correspondientes, lo que permite al entrenador asignar 
-      // una rutina personalizada a cada cliente basada en una plantilla existente, 
-      // y asegurando que cada cliente tenga su propia versión de la rutina asignada, facilitando así la personalización y 
-      // el seguimiento del progreso de cada cliente de manera independiente.
-      const clonedRoutine = await Routine.create({
-        name: sourceRoutineDoc.name,
-        description: sourceRoutineDoc.description,
-        duration: sourceRoutineDoc.duration,
-        difficulty: sourceRoutineDoc.difficulty,
-        exercises: clonedExercises,
-        tags: sourceRoutineDoc.tags || [],
-        createdBy: user._id,
-        sourceRoutineId: sourceRoutineDoc._id,
-        isTemplate: false,
-      });
-
-      clonedRoutineId = clonedRoutine._id.toString();
     }
 
-    // Crear la nueva asignación utilizando los datos proporcionados en la solicitud, y asociándola al cliente,
-    // entrenador, rutina clonada (si se creó) y plan alimenticio correspondientes, 
-    // lo que permite al entrenador asignar una rutina personalizada y un plan alimenticio a cada cliente, 
-    // y asegurando que cada cliente tenga su propia versión de la asignación con los recursos correspondientes, 
-    // facilitando así la personalización y el seguimiento del progreso de cada cliente de manera independiente.
+    if (!Array.isArray(weeklySchedule) || weeklySchedule.length === 0) {
+      return NextResponse.json({ error: 'Debes enviar el calendario semanal' }, { status: 400 });
+    }
+
+    let built;
+    try {
+      built = await buildProgramFromTemplates(user, {
+        defaultRoutineTemplateId: routineId || null,
+        mealPlanTemplateId: mealPlanId || null,
+        weeklySchedule: weeklySchedule as WeeklyScheduleInput[],
+      });
+    } catch (programError) {
+      const message = programError instanceof Error ? programError.message : 'Programa inválido';
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    if (!built.routineId && !built.mealPlanId) {
+      return NextResponse.json({ error: 'Debe asignar al menos una rutina o un plan alimenticio' }, { status: 400 });
+    }
+
     const assignment = await Assignment.create({
       clientId,
       trainerId,
       gymId: user.gymId || null,
-      routineId: clonedRoutineId || routineId || null,
-      mealPlanId: mealPlanId || null,
+      routineId: built.routineId,
+      mealPlanId: built.mealPlanId,
       startDate,
       endDate: endDate || undefined,
       notes,
       durationWeeks: durationWeeks || 4,
-      weeklySchedule: Array.isArray(weeklySchedule) ? weeklySchedule : [],
+      weeklySchedule: built.weeklySchedule,
       status: 'active',
     });
 
@@ -214,13 +157,30 @@ export async function POST(req: NextRequest) {
       trainerId,
     });
 
+    const assignmentParts: string[] = []
+    if (built.routineId) assignmentParts.push('rutina')
+    if (built.mealPlanId) assignmentParts.push('plan alimenticio')
+
+    recordActivitySafe({
+      gymId: user.gymId,
+      actorId: user._id,
+      actorName: user.name,
+      actorAvatar: user.avatar,
+      action: 'assignment.create',
+      summary: `asignó ${assignmentParts.join(' y ') || 'contenido'} a ${client.name}`,
+      targetType: 'Assignment',
+      targetId: assignment._id,
+      targetLabel: client.name,
+      metadata: { clientId, trainerId },
+    });
+
     await notifyAssignmentCreated({
       clientId,
       gymId: user.gymId,
       trainerName: trainer.name,
       assignmentId: assignment._id.toString(),
-      hasRoutine: Boolean(clonedRoutineId || routineId),
-      hasMealPlan: Boolean(mealPlanId),
+      hasRoutine: Boolean(built.routineId),
+      hasMealPlan: Boolean(built.mealPlanId),
     }).catch((err) => console.error('[notifications] assignment:', err));
 
     return NextResponse.json({ assignment }, { status: 201 });

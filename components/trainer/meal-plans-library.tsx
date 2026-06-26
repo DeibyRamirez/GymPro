@@ -50,7 +50,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
         setLoading(true)
         setError("")
 
-        const res = await fetch("/api/meal-plans", {
+        const res = await fetch("/api/meal-plans?templatesOnly=true&limit=100", {
           method: "GET",
           credentials: "include"
         })
@@ -71,7 +71,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
     fetchMealsPlans()
   }, [])
 
-  if (loading) return <p>Cargando rutinas...</p>
+  if (loading) return <p>Cargando planes alimenticios...</p>
   if (error) return <p>Error: {error}</p>
 
   return (
@@ -93,9 +93,11 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredPlans.map((plan) => (
+        {filteredPlans.map((plan) => {
+          const planKey = plan.id || plan._id || plan.name
+          return (
           <Card
-            key={plan._id}
+            key={planKey}
             className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2 hover:border-accent/50"
           >
             {/* Header de la tarjeta con gradiente */}
@@ -130,8 +132,8 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Comidas incluidas:</p>
                 <div className="flex flex-wrap gap-1">
-                  {plan.meals.map((meal) => (
-                    <Badge key={meal.id} variant="outline" className="text-xs">
+                  {plan.meals.map((meal, index) => (
+                    <Badge key={`${planKey}-${meal.name}-${meal.time}-${index}`} variant="outline" className="text-xs">
                       {meal.name}
                     </Badge>
                   ))}
@@ -171,7 +173,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
               </div>
             </div>
           </Card>
-        ))}
+        )})}
       </div>
 
       {/* Diálogos */}
@@ -179,7 +181,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSuccess={async () => {
-          const res = await fetch("/api/meal-plans", { credentials: "include" })
+          const res = await fetch("/api/meal-plans?templatesOnly=true&limit=100", { credentials: "include" })
           const data = await res.json()
           setMealsPlans(data.mealPlans || [])
         }}
@@ -187,12 +189,12 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
       {selectedPlan && (
         <>
           <EditMealPlanDialog
-            key={selectedPlan._id}
+            key={selectedPlan.id || selectedPlan._id}
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
             plan={selectedPlan}
             onUpdated={async () => {
-              const res = await fetch("/api/meal-plans", { credentials: "include" })
+              const res = await fetch("/api/meal-plans?templatesOnly=true&limit=100", { credentials: "include" })
               const data = await res.json()
               setMealsPlans(data.mealPlans || [])
             }}

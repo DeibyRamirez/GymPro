@@ -12,8 +12,14 @@ export interface CalendarEvent {
   mealPlanId?: string
   capacity?: number
   bookedCount?: number
+  invitedUserIds?: string[]
+  confirmedUserIds?: string[]
+  invitationStatus?: "none" | "pending" | "confirmed" | "declined"
+  canEdit?: boolean
+  canRespond?: boolean
   gymId?: string
   exercises?: Array<{
+    exerciseId?: string
     name: string
     sets?: number
     reps?: string
@@ -21,6 +27,23 @@ export interface CalendarEvent {
     instructions?: string
   }>
   metadata?: Record<string, unknown>
+  isRestDay?: boolean
+  hasMealPlan?: boolean
+  mealsToday?: Array<{
+    name: string
+    time: string
+    foods: string[]
+    calories: number
+    macros?: { protein?: number; carbs?: number; fats?: number }
+  }>
+  dayCompletion?: {
+    dateKey: string
+    workoutCompleted: boolean
+    nutritionCompleted: boolean
+    dayCompleted: boolean
+    completedAt?: string | null
+    note?: string | null
+  } | null
 }
 
 export const mockCalendarEvents: CalendarEvent[] = [

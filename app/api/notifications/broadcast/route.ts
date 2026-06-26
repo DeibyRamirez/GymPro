@@ -4,6 +4,7 @@ import { assertCsrf } from '@/lib/csrf';
 import connectDB from '@/lib/mongodb';
 import { notifyGymBroadcast } from '@/lib/notifications/triggers';
 import { auditLog } from '@/lib/audit-log';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 export async function POST(req: NextRequest) {
@@ -50,6 +51,16 @@ export async function POST(req: NextRequest) {
       gymId: String(targetGymId),
       sentCount,
       title: title.trim(),
+    });
+
+    recordActivitySafe({
+      gymId: targetGymId,
+      actorId: actor._id,
+      actorName: actor.name,
+      actorAvatar: actor.avatar,
+      action: 'notification.broadcast',
+      summary: `envió un comunicado: "${title.trim()}"`,
+      metadata: { sentCount, roles },
     });
 
     return NextResponse.json({

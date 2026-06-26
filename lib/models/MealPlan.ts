@@ -22,6 +22,8 @@ export interface IMealPlan extends Document {
   duration: number; // días
   tags: string[];
   isActive: boolean;
+  isTemplate?: boolean;
+  sourceMealPlanId?: mongoose.Types.ObjectId | null;
   createdBy: mongoose.Types.ObjectId;
   gymId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
@@ -111,6 +113,15 @@ const MealPlanSchema = new Schema<IMealPlan>({
     type: Boolean,
     default: true
   },
+  isTemplate: {
+    type: Boolean,
+    default: true
+  },
+  sourceMealPlanId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MealPlan',
+    default: null
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -141,6 +152,8 @@ MealPlanSchema.index({ createdBy: 1 });
 MealPlanSchema.index({ tags: 1 });
 MealPlanSchema.index({ isActive: 1 });
 MealPlanSchema.index({ gymId: 1 });
+MealPlanSchema.index({ isTemplate: 1 });
+MealPlanSchema.index({ sourceMealPlanId: 1 });
 
 const MealPlan = mongoose.models.MealPlan || mongoose.model<IMealPlan>('MealPlan', MealPlanSchema);
 

@@ -22,6 +22,7 @@ import User, { IUser } from '@/lib/models/User'
 import { logApiError, logApiRequest } from '@/lib/api-debug'
 import { assertCsrf } from '@/lib/csrf'
 import { auditLog } from '@/lib/audit-log'
+import { recordActivitySafe } from '@/lib/activity-log/record'
 import { validateAvatarUrl } from '@/lib/file-validation'
 
 type UserUpdateBody = Partial<{
@@ -190,6 +191,19 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       fields: Object.keys(updateData),
     })
 
+    recordActivitySafe({
+      gymId: user.gymId,
+      actorId: currentUser._id,
+      actorName: currentUser.name,
+      actorAvatar: currentUser.avatar,
+      action: 'user.update',
+      summary: `actualizó el perfil de ${user.name}`,
+      targetType: 'User',
+      targetId: user._id,
+      targetLabel: user.name,
+      metadata: { fields: Object.keys(updateData) },
+    })
+
     const updatedUser = await User.findById(id).select('-password')
     if (!updatedUser) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
 
@@ -235,6 +249,18 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     auditLog('user.delete', {
       actorId: currentUser._id.toString(),
       targetUserId: id,
+    })
+
+    recordActivitySafe({
+      gymId: user.gymId,
+      actorId: currentUser._id,
+      actorName: currentUser.name,
+      actorAvatar: currentUser.avatar,
+      action: 'user.delete',
+      summary: `desactivó al usuario ${user.name}`,
+      targetType: 'User',
+      targetId: user._id,
+      targetLabel: user.name,
     })
 
     return NextResponse.json({ message: 'Usuario desactivado exitosamente' })

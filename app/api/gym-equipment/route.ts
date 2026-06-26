@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-server';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import connectDB from '@/lib/mongodb';
 import Gym from '@/lib/models/Gym';
 import GymEquipment from '@/lib/models/GymEquipment';
@@ -55,6 +56,18 @@ export async function POST(req: NextRequest) {
       image,
       quantity: Number(quantity) || 1,
       isActive: true,
+    });
+
+    recordActivitySafe({
+      gymId,
+      actorId: user._id,
+      actorName: user.name,
+      actorAvatar: user.avatar,
+      action: 'equipment.create',
+      summary: `registró el equipamiento "${name}"`,
+      targetType: 'GymEquipment',
+      targetId: equipment._id,
+      targetLabel: name,
     });
 
     return NextResponse.json({ equipment }, { status: 201 });

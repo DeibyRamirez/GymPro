@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-server';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import connectDB from '@/lib/mongodb';
 import BodyMeasurement from '@/lib/models/BodyMeasurement';
 import CalendarEvent from '@/lib/models/CalendarEvent';
@@ -201,7 +202,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const currentUser = await verifyAuth(req);
     const { id } = await context.params;
     logApiRequest('/api/users/[id]/progress POST', { currentUserId: currentUser._id.toString(), targetUserId: id });
-    const targetUser = await User.findById(id).select('role trainerId isActive');
+    const targetUser = await User.findById(id).select('role trainerId isActive name gymId');
 
     if (!targetUser) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
@@ -226,6 +227,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       arm: body.arm,
       thigh: body.thigh,
       notes: body.notes,
+    });
+
+    recordActivitySafe({
+      gymId: targetUser.gymId,
+      actorId: currentUser._id,
+      actorName: currentUser.name,
+      actorAvatar: currentUser.avatar,
+      action: 'progress.record',
+      summary: `registró progreso corporal de ${targetUser.name}`,
+      targetType: 'BodyMeasurement',
+      targetId: measurement._id,
+      targetLabel: targetUser.name,
     });
 
     const measurements = await BodyMeasurement.find({ userId: id }).sort({ date: 1 });

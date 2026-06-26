@@ -11,6 +11,7 @@ import User from '@/lib/models/User'
 import connectDB from '@/lib/mongodb'
 import { NextRequest, NextResponse } from 'next/server'
 import { auditLog } from '@/lib/audit-log'
+import { recordActivitySafe } from '@/lib/activity-log/record'
 import { enforceRateLimit, getClientIp } from '@/lib/rate-limit'
 import {
   handleAuthError,
@@ -165,6 +166,19 @@ export async function POST(req: NextRequest) {
       role: newUser.role,
       gymId: gym._id.toString(),
       ip: getClientIp(req),
+    })
+
+    recordActivitySafe({
+      gymId: gym._id,
+      actorId: newUser._id,
+      actorName: newUser.name,
+      actorAvatar: newUser.avatar,
+      action: 'auth.register',
+      summary: `se registró como ${newUser.role === 'client' ? 'cliente' : newUser.role === 'trainer' ? 'entrenador' : newUser.role}`,
+      targetType: 'User',
+      targetId: newUser._id,
+      targetLabel: newUser.name,
+      metadata: { role: newUser.role, email: newUser.email },
     })
 
     const response = NextResponse.json(

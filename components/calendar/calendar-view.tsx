@@ -7,9 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, CalendarDays, Dumbbell, UtensilsCrossed, Moon, ClipboardCheck, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CalendarEvent } from "@/lib/calendar-data"
+import { parseEventDate } from "@/lib/calendar/parse-event-date"
 
 interface CalendarViewProps {
   events: CalendarEvent[]
+  onRespond?: (eventId: string, action: "accept" | "decline") => void | Promise<void>
+  respondingId?: string | null
 }
 
 const eventTypeConfig = {
@@ -45,23 +48,13 @@ const eventTypeConfig = {
   },
 }
 
-export function CalendarView({ events }: CalendarViewProps) {
+export function CalendarView({ events, onRespond, respondingId }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(() => new Date())
 
   const monthNames = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre",
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
   ]
 
   const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
@@ -71,37 +64,31 @@ export function CalendarView({ events }: CalendarViewProps) {
     const month = date.getMonth()
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay()
-
-    return { daysInMonth, startingDayOfWeek, year, month }
+    return { daysInMonth: lastDay.getDate(), startingDayOfWeek: firstDay.getDay(), year, month }
   }
 
   const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate)
 
-  const previousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))
-  }
-
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
-  }
-
-  const getEventsForDay = (day: number) => {
-    return events.filter((event) => {
-      const eventDate = new Date(event.date)
+  const getEventsForDay = (day: number) =>
+    events.filter((event) => {
+      const eventDate = parseEventDate(event.date)
       return eventDate.getDate() === day && eventDate.getMonth() === month && eventDate.getFullYear() === year
     })
-  }
 
-  const selectedDayEvents = useMemo(() => {
-    return events
-      .filter((event) => {
-        const eventDate = new Date(event.date)
-        return eventDate.getDate() === selectedDate.getDate() && eventDate.getMonth() === selectedDate.getMonth() && eventDate.getFullYear() === selectedDate.getFullYear()
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-  }, [events, selectedDate])
+  const selectedDayEvents = useMemo(
+    () =>
+      events
+        .filter((event) => {
+          const eventDate = parseEventDate(event.date)
+          return (
+            eventDate.getDate() === selectedDate.getDate() &&
+            eventDate.getMonth() === selectedDate.getMonth() &&
+            eventDate.getFullYear() === selectedDate.getFullYear()
+          )
+        })
+        .sort((a, b) => parseEventDate(a.date).getTime() - parseEventDate(b.date).getTime()),
+    [events, selectedDate],
+  )
 
   const isToday = (day: number) => {
     const today = new Date()
@@ -126,14 +113,17 @@ export function CalendarView({ events }: CalendarViewProps) {
         className={cn(
           "aspect-square border rounded-lg p-2 hover:bg-accent/5 transition-colors cursor-pointer",
           today && "border-primary bg-primary/5",
-          selectedDate.getDate() === day && selectedDate.getMonth() === month && selectedDate.getFullYear() === year && "ring-2 ring-primary ring-offset-1",
+          selectedDate.getDate() === day &&
+            selectedDate.getMonth() === month &&
+            selectedDate.getFullYear() === year &&
+            "ring-2 ring-primary ring-offset-1",
         )}
       >
         <div className="flex flex-col h-full">
           <span className={cn("text-sm font-medium mb-1", today && "text-primary font-bold")}>{day}</span>
           <div className="flex-1 space-y-1 overflow-hidden">
             {dayEvents.slice(0, 2).map((event) => {
-              const config = eventTypeConfig[event.type]
+              const config = eventTypeConfig[event.type] ?? eventTypeConfig.workout
               const Icon = config.icon
               return (
                 <div
@@ -164,13 +154,13 @@ export function CalendarView({ events }: CalendarViewProps) {
         <div className="flex items-center justify-between">
           <CardTitle>Calendario de Entrenamiento</CardTitle>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={previousMonth}>
+            <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="min-w-[140px] text-center font-semibold">
               {monthNames[month]} {year}
             </div>
-            <Button variant="outline" size="icon" onClick={nextMonth}>
+            <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -179,28 +169,9 @@ export function CalendarView({ events }: CalendarViewProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-7 gap-2">
           {dayNames.map((day) => (
-            <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-              {day}
-            </div>
+            <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">{day}</div>
           ))}
           {days}
-        </div>
-
-        <div className="border-t pt-4">
-          <h4 className="text-sm font-semibold mb-3">Leyenda</h4>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(eventTypeConfig).map(([type, config]) => {
-              const Icon = config.icon
-              return (
-                <div key={type} className="flex items-center gap-2">
-                  <Badge variant="outline" className={cn("text-xs", config.color)}>
-                    <Icon className="h-3 w-3 mr-1" />
-                    {config.label}
-                  </Badge>
-                </div>
-              )
-            })}
-          </div>
         </div>
       </CardContent>
       <CardContent className="border-t pt-4">
@@ -208,22 +179,40 @@ export function CalendarView({ events }: CalendarViewProps) {
         {selectedDayEvents.length === 0 ? (
           <p className="text-sm text-muted-foreground">No hay eventos en este día.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {selectedDayEvents.map((event) => {
-              const config = eventTypeConfig[event.type]
+              const config = eventTypeConfig[event.type] ?? eventTypeConfig.workout
               const Icon = config.icon
               return (
-                <div key={event.id} className="rounded-lg border p-3">
+                <div key={event.id} className="rounded-lg border p-3 space-y-2">
                   <div className="flex items-start gap-2">
                     <Badge variant="outline" className={cn("text-xs", config.color)}>
                       <Icon className="h-3 w-3 mr-1" />
                       {config.label}
                     </Badge>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-sm">{event.title}</p>
                       {event.description && <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>}
+                      {event.type === "class" && event.capacity != null && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Cupos: {event.bookedCount || 0}/{event.capacity}
+                        </p>
+                      )}
                     </div>
                   </div>
+                  {event.canRespond && event.invitationStatus !== "confirmed" && event.invitationStatus !== "declined" && event.invitationStatus !== "none" && onRespond && (
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" disabled={respondingId === event.id} onClick={() => onRespond(event.id, "accept")}>
+                        Confirmar asistencia
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={respondingId === event.id} onClick={() => onRespond(event.id, "decline")}>
+                        Rechazar
+                      </Button>
+                    </div>
+                  )}
+                  {event.invitationStatus === "confirmed" && (
+                    <Badge variant="secondary" className="text-xs">Confirmado</Badge>
+                  )}
                 </div>
               )
             })}

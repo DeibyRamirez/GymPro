@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-server';
+import { toDateKey } from '@/lib/assignment/day-completion';
 import connectDB from '@/lib/mongodb';
 import Assignment from '@/lib/models/Assignment';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
@@ -9,6 +10,7 @@ type RoutineProgressItem = {
   routineId: { toString: () => string }
   exerciseId: { toString: () => string }
   setNumber: number
+  dateKey?: string | null
 }
 
 
@@ -44,29 +46,32 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     // y asegurando que el progreso se actualice de manera coherente con los datos proporcionados, 
     // facilitando así el seguimiento del progreso de cada cliente de manera precisa y segura.
     const body = await req.json();
-    const { routineId, exerciseId, setNumber } = body;
+    const { routineId, exerciseId, setNumber, date } = body;
 
     if (!routineId || !exerciseId || !setNumber) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
     }
 
-    // Verificar que la serie de ejercicio especificada no haya sido marcada como completada previamente, 
-    // para evitar registros duplicados de progreso, 
-    // y asegurar que el progreso refleje únicamente las series de ejercicios que realmente han sido completadas por el cliente, 
-    // manteniendo así la integridad y precisión de los datos de progreso de cada cliente.
+    const dateKey =
+      typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date.slice(0, 10))
+        ? date.slice(0, 10)
+        : toDateKey(new Date());
+
     assignment.routineProgress = assignment.routineProgress || [];
     const exists = assignment.routineProgress.some(
-      (item: RoutineProgressItem) => item.routineId.toString() === routineId && item.exerciseId.toString() === exerciseId && item.setNumber === Number(setNumber)
+      (item: RoutineProgressItem) =>
+        item.routineId.toString() === routineId &&
+        item.exerciseId.toString() === exerciseId &&
+        item.setNumber === Number(setNumber) &&
+        (item.dateKey || null) === dateKey,
     );
 
-    // Si la serie de ejercicio no ha sido marcada como completada previamente, agregar un nuevo registro de progreso para esa serie,
-    // lo que permite al cliente marcar la serie como completada, y asegurando que el progreso se actualice de manera coherente con los datos proporcionados, 
-    // facilitando así el seguimiento del progreso de cada cliente de manera precisa y segura.
     if (!exists) {
       assignment.routineProgress.push({
         routineId,
         exerciseId,
         setNumber: Number(setNumber),
+        dateKey,
         completedAt: new Date(),
       });
       await assignment.save();

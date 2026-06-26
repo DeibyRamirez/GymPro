@@ -1,9 +1,33 @@
 import mongoose from 'mongoose';
+import { createEventInviteToken } from '@/lib/calendar/event-invite-token';
+import { getAppUrl } from '@/lib/env';
 import { createNotification } from '@/lib/notifications/create';
 import User from '@/lib/models/User';
 
 function formatEventDate(date: Date): string {
   return date.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+export async function notifyEventInvitation(params: {
+  userId: mongoose.Types.ObjectId | string;
+  gymId?: mongoose.Types.ObjectId | string | null;
+  title: string;
+  date: Date;
+  eventId: string;
+  capacity?: number;
+}): Promise<void> {
+  const token = createEventInviteToken(params.eventId, String(params.userId));
+  const confirmLink = `${getAppUrl()}/api/calendar/invite/confirm?token=${encodeURIComponent(token)}`;
+  const capacityText = params.capacity ? ` Cupos disponibles: ${params.capacity}.` : '';
+
+  await createNotification({
+    userId: params.userId,
+    gymId: params.gymId,
+    type: 'class_new',
+    title: 'Invitación a evento',
+    body: `Has sido invitado a "${params.title}" el ${formatEventDate(params.date)}.${capacityText} Confirma tu asistencia desde el calendario o el enlace del correo.`,
+    metadata: { eventId: params.eventId, link: confirmLink },
+  });
 }
 
 export async function notifyClassCreated(params: {
@@ -12,15 +36,9 @@ export async function notifyClassCreated(params: {
   title: string;
   date: Date;
   eventId: string;
+  capacity?: number;
 }): Promise<void> {
-  await createNotification({
-    userId: params.userId,
-    gymId: params.gymId,
-    type: 'class_new',
-    title: 'Nueva clase programada',
-    body: `Se ha programado la clase "${params.title}" para el ${formatEventDate(params.date)}.`,
-    metadata: { eventId: params.eventId },
-  });
+  await notifyEventInvitation(params);
 }
 
 export async function notifyClassBooking(params: {
@@ -34,8 +52,8 @@ export async function notifyClassBooking(params: {
     userId: params.userId,
     gymId: params.gymId,
     type: 'class_booking',
-    title: 'Reserva confirmada',
-    body: `Tu cupo para "${params.title}" el ${formatEventDate(params.date)} ha sido confirmado.`,
+    title: 'Asistencia confirmada',
+    body: `Confirmaste tu asistencia a "${params.title}" el ${formatEventDate(params.date)}.`,
     metadata: { eventId: params.eventId },
   });
 }
@@ -88,4 +106,26 @@ export async function notifyGymBroadcast(params: {
     count += 1;
   }
   return count;
+}
+
+export async function notifyInvitedUsers(params: {
+  invitedUserIds: string[];
+  gymId?: mongoose.Types.ObjectId | string | null;
+  title: string;
+  date: Date;
+  eventId: string;
+  capacity?: number;
+}): Promise<void> {
+  await Promise.all(
+    params.invitedUserIds.map((userId) =>
+      notifyEventInvitation({
+        userId,
+        gymId: params.gymId,
+        title: params.title,
+        date: params.date,
+        eventId: params.eventId,
+        capacity: params.capacity,
+      }),
+    ),
+  );
 }

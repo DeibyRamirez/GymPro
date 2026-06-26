@@ -1,8 +1,10 @@
 # Estrategia de Pruebas
 
+> **Última actualización:** Junio 26, 2026
+
 ## Visión General
 
-Aunque GymPro actualmente no tiene pruebas automatizadas implementadas, este documento define la estrategia de testing que se debe seguir para garantizar la calidad del software.
+GymPro aún no tiene pruebas automatizadas en CI. Este documento define la estrategia y los **casos críticos prioritarios** según el estado actual (v1.1 — programas, completitud diaria, bitácora).
 
 ## Pirámide de Pruebas
 
@@ -593,6 +595,44 @@ screen.getByTestId('complex-component');
 ### Tasa de Falsos Positivos
 - Objetivo: < 5% de tests flaky
 - Re-ejecutar tests flaky antes de marcar como fallidos
+
+---
+
+## Casos Críticos Prioritarios (v1.1)
+
+Implementar **antes de producción**, en este orden:
+
+### `lib/assignment/` (unitarios)
+| Función | Caso |
+|---------|------|
+| `toDateKey` | Fecha local → `YYYY-MM-DD` sin desfase UTC |
+| `calculateStreak` | Rachas con huecos, día actual incompleto |
+| `buildProgramFromTemplates` | Clona rutina + plan; cache por templateId |
+| `buildProgramFromTemplates` | Rutina distinta por `routineTemplateId` en weeklySchedule |
+| `dedupeMealPlanTemplates` | Dos duplicados → uno; dos planes distintos → dos |
+| `extractRefId` | ObjectId, documento poblado, string inválido |
+
+### API Assignments (integración)
+| Endpoint | Caso |
+|----------|------|
+| POST `/api/assignments` | 201 crea programa; 409 si cliente ya tiene activo |
+| PUT `/api/assignments/[id]/program` | Actualiza sin duplicar; preserva `dayCompletions` |
+| GET `.../calendar` | Rutina correcta por weekday; `mealsToday` presente |
+| POST `.../day-complete` | Marca entrenamiento/nutrición/día; racha coherente |
+| POST `.../progress` | Series con `dateKey` no mezclan días |
+
+### Meal Plans API
+| Endpoint | Caso |
+|----------|------|
+| GET `?templatesOnly=true` | No incluye clones (`isTemplate: false`) |
+| GET `?templatesOnly=true` | Plan Muscular + Plan Definición → 2 resultados |
+
+### Frontend (RTL)
+| Componente | Caso |
+|------------|------|
+| `AssignProgramDialog` | Modo edición pre-carga días y rutina |
+| `ClientsView` | Cliente con programa → PUT, no POST |
+| `MealPlansLibrary` | Keys únicas en badges de comidas |
 
 ---
 

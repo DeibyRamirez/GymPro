@@ -1,98 +1,222 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Clock } from "lucide-react"
-
-interface Activity {
-  id: string
-  user: {
-    name: string
-    avatar?: string
-  }
-  action: string
-  type: "routine" | "meal_plan" | "user" | "system"
-  timestamp: string
-}
-
-const mockActivities: Activity[] = [
-  {
-    id: "1",
-    user: { name: "Carlos Martínez", avatar: "/placeholder.svg?key=yoyag" },
-    action: "asignó una nueva rutina a Ana García",
-    type: "routine",
-    timestamp: "Hace 5 minutos",
-  },
-  {
-    id: "2",
-    user: { name: "Admin Principal", avatar: "/placeholder.svg?key=78zb5" },
-    action: "creó un nuevo usuario entrenador",
-    type: "user",
-    timestamp: "Hace 1 hora",
-  },
-  {
-    id: "3",
-    user: { name: "Carlos Martínez", avatar: "/placeholder.svg?key=yoyag" },
-    action: "actualizó el plan alimenticio de Luis Rodríguez",
-    type: "meal_plan",
-    timestamp: "Hace 2 horas",
-  },
-  {
-    id: "4",
-    user: { name: "Sistema", avatar: "/placeholder.svg?key=sys01" },
-    action: "generó reporte mensual de métricas",
-    type: "system",
-    timestamp: "Hace 3 horas",
-  },
-]
-
-const typeColors = {
-  routine: "bg-primary/10 text-primary",
-  meal_plan: "bg-accent/10 text-accent",
-  user: "bg-chart-3/10 text-chart-3",
-  system: "bg-muted text-muted-foreground",
-}
-
-export function ActivityFeed() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          Actividad Reciente
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {mockActivities.map((activity) => (
-            <div key={activity.id} className="flex items-start gap-3 pb-4 border-b last:border-0 last:pb-0">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {activity.user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 space-y-1">
-                <p className="text-sm leading-relaxed">
-                  <span className="font-medium">{activity.user.name}</span>{" "}
-                  <span className="text-muted-foreground">{activity.action}</span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className={`text-xs ${typeColors[activity.type]}`}>
-                    {activity.type === "routine" && "Rutina"}
-                    {activity.type === "meal_plan" && "Plan Alimenticio"}
-                    {activity.type === "user" && "Usuario"}
-                    {activity.type === "system" && "Sistema"}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{activity.timestamp}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+"use client"
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { cn } from "@/lib/utils"
+import { ACTIVITY_CATEGORY_LABELS, type ActivityCategory } from "@/lib/activity-log/types"
+import { ClipboardList, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+
+type ActivityItem = {
+  id: string
+  actor: {
+    id: string | null
+    name: string
+    avatar: string | null
+  }
+  action: string
+  category: ActivityCategory
+  categoryLabel: string
+  summary: string
+  targetLabel: string | null
+  createdAt: string
+}
+
+const typeColors: Record<ActivityCategory, string> = {
+  routine: "bg-primary/10 text-primary",
+  meal_plan: "bg-accent/10 text-accent-foreground",
+  user: "bg-chart-3/10 text-chart-3",
+  system: "bg-muted text-muted-foreground",
+  assignment: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  sale: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  calendar: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  progress: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  inventory: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+}
+
+function formatRelativeTime(value: string) {
+  const date = new Date(value)
+  const diffMs = Date.now() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60_000)
+
+  if (diffMin < 1) return "Hace un momento"
+  if (diffMin < 60) return `Hace ${diffMin} min`
+  const diffHours = Math.floor(diffMin / 60)
+  if (diffHours < 24) return `Hace ${diffHours} h`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) return `Hace ${diffDays} d`
+
+  return date.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("")
+}
+
+interface ActivityFeedProps {
+  gymSlug?: string
+}
+
+function ActivityFeedTable({ gymSlug, category }: { gymSlug: string; category: string }) {
+  const [loading, setLoading] = useState(true)
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+
+  useEffect(() => {
+    let active = true
+
+    async function load() {
+      const params = new URLSearchParams({ gymSlug, limit: "50" })
+      if (category !== "all") params.set("category", category)
+
+      try {
+        const res = await fetch(`/api/activity-log?${params.toString()}`, { credentials: "include" })
+        if (!active) return
+
+        if (!res.ok) {
+          setActivities([])
+          return
+        }
+
+        const data = await res.json()
+        setActivities(data.activities || [])
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    void load()
+    return () => {
+      active = false
+    }
+  }, [gymSlug, category])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    )
+  }
+
+  if (activities.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Aún no hay actividad registrada para este gimnasio.
+      </p>
+    )
+  }
+
+  return (
+    <div className="max-h-[420px] overflow-y-auto overscroll-y-contain rounded-xl border [scrollbar-gutter:stable]">
+      <Table>
+        <TableHeader className="sticky top-0 z-10 bg-card">
+          <TableRow>
+            <TableHead className="w-[180px]">Usuario</TableHead>
+            <TableHead>Actividad</TableHead>
+            <TableHead className="w-[140px]">Tipo</TableHead>
+            <TableHead className="w-[150px]">Fecha</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {activities.map((activity) => (
+            <TableRow key={activity.id}>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={activity.actor.avatar || "/placeholder.svg"}
+                      alt={activity.actor.name}
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                      {initials(activity.actor.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium leading-tight">{activity.actor.name}</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <p className="text-sm text-muted-foreground">{activity.summary}</p>
+                {activity.targetLabel && (
+                  <p className="mt-0.5 text-xs text-muted-foreground/80">
+                    Ref: {activity.targetLabel}
+                  </p>
+                )}
+              </TableCell>
+              <TableCell>
+                <Badge
+                  variant="secondary"
+                  className={cn("text-[10px] uppercase tracking-wide", typeColors[activity.category])}
+                >
+                  {activity.categoryLabel}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                {formatRelativeTime(activity.createdAt)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+export function ActivityFeed({ gymSlug }: ActivityFeedProps) {
+  const [category, setCategory] = useState<string>("all")
+
+  return (
+    <Card className="rounded-3xl border bg-card/80 shadow-sm">
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Bitácora del sistema
+          </CardTitle>
+          <CardDescription>
+            Seguimiento de actividad del gimnasio: usuarios, rutinas, planes, ventas y más.
+          </CardDescription>
+        </div>
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="Filtrar por tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los tipos</SelectItem>
+            {(Object.entries(ACTIVITY_CATEGORY_LABELS) as [ActivityCategory, string][]).map(
+              ([key, label]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ),
+            )}
+          </SelectContent>
+        </Select>
+      </CardHeader>
+      <CardContent>
+        {!gymSlug ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Selecciona un gimnasio para ver la bitácora.
+          </p>
+        ) : (
+          <ActivityFeedTable key={`${gymSlug}-${category}`} gymSlug={gymSlug} category={category} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+

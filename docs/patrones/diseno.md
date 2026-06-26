@@ -1,5 +1,7 @@
 # Patrones de Diseño Implementados
 
+> **Última actualización:** Junio 26, 2026
+
 ## Patrones Arquitectónicos
 
 ### 1. Patrón de Capas (Layered Architecture)
@@ -137,67 +139,47 @@ const user = await User.findByEmail(email, gymId);
 - Cada cliente necesita ajustes personalizados
 - Modificar una copia NO debe afectar a las demás
 
-**Implementación:**
+**Implementación actual (`lib/assignment/program-service.ts`):**
 ```typescript
-// app/api/assignments/route.ts
-async function cloneRoutine(originalRoutineId: string, userId: string, gymId: string) {
-  // 1. Buscar rutina original
-  const originalRoutine = await Routine.findById(originalRoutineId)
-    .populate('exercises.exercise');
-  
-  // 2. Clonar ejercicios
-  const clonedExercises = await Promise.all(
-    originalRoutine.exercises.map(async (ex) => {
-      const clonedExercise = new Exercise({
-        ...ex.exercise.toObject(),
-        _id: undefined, // Genera nuevo ID
-        sourceExerciseId: ex.exercise._id, // Trazabilidad
-        isTemplate: false,
-        createdBy: userId,
-        gymId
-      });
-      await clonedExercise.save();
-      return {
-        exercise: clonedExercise._id,
-        sets: ex.sets,
-        reps: ex.reps,
-        rest: ex.rest,
-        instructions: ex.instructions,
-        order: ex.order
-      };
-    })
-  );
-  
-  // 3. Clonar rutina con ejercicios clonados
-  const clonedRoutine = new Routine({
-    ...originalRoutine.toObject(),
-    _id: undefined,
-    sourceRoutineId: originalRoutineId, // Trazabilidad
-    isTemplate: false,
-    exercises: clonedExercises,
-    createdBy: userId,
-    gymId
-  });
-  
-  await clonedRoutine.save();
-  return clonedRoutine._id;
-}
+export async function buildProgramFromTemplates(user, input) {
+  const routineCloneCache = new Map<string, string>();
+  let mealPlanId = null;
 
-// Uso al crear Assignment
-const clonedRoutineId = await cloneRoutine(body.routineId, trainerId, gymId);
-const assignment = new Assignment({
-  clientId,
-  trainerId,
-  routineId: clonedRoutineId, // Usa la copia, no el original
-  gymId
-});
+  if (input.mealPlanTemplateId) {
+    mealPlanId = await cloneMealPlanFromTemplate(...);
+    // isTemplate: false, sourceMealPlanId: plantilla
+  }
+
+  for (const day of input.weeklySchedule) {
+    if (!day.isRestDay) {
+      const templateId = day.routineTemplateId || input.defaultRoutineTemplateId;
+      routineId = await resolveRoutineClone(templateId); // cache por templateId
+    }
+    weeklySchedule.push({ dayOfWeek, routineId, mealPlanId, isRestDay, ... });
+  }
+}
 ```
+
+**Plantillas vs clones:**
+| Entidad | Plantilla | Clon (asignado) |
+|---------|-----------|-----------------|
+| Routine | `isTemplate: true` | `sourceRoutineId`, `isTemplate: false` |
+| MealPlan | `isTemplate: true` | `sourceMealPlanId`, `isTemplate: false` |
+| Biblioteca | `?templatesOnly=true` | Excluido + deduplicación |
 
 **Ventajas:**
 - Personalización sin riesgos
-- Historial preservado (sourceRoutineId)
-- Plantillas reutilizables
-- Trazabilidad completa
+- Trazabilidad (`sourceRoutineId`, `sourceMealPlanId`)
+- Cache de clones evita duplicar la misma plantilla en un solo POST/PUT
+- Servicio único para crear y actualizar programas
+
+---
+
+### 4b. Patrón Create vs Update (Programa activo)
+
+Evita assignments duplicados: **POST** → 409 si hay activo; **PUT** `/api/assignments/[id]/program` actualiza in-place preservando progreso.
+
+Frontend usa `getDocumentId(assignment)` porque Assignment serializa `_id` como `id`.
 
 ---
 

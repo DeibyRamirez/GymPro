@@ -4,15 +4,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Dumbbell, UtensilsCrossed } from "lucide-react"
+import { GOAL_LABELS } from "@/lib/assignment/goal-tags"
+import { ClipboardList, Dumbbell, UtensilsCrossed } from "lucide-react"
 import type { User } from "@/lib/auth"
 
 interface ClientCardProps {
-  client: User
+  client: User & { goal?: string | null }
   hasRoutine: boolean
   hasMealPlan: boolean
-  onAssignRoutine: () => void
-  onAssignMealPlan: () => void
+  hasActiveProgram?: boolean
+  onAssignProgram: () => void
   onViewDetails: () => void
 }
 
@@ -20,10 +21,12 @@ export function ClientCard({
   client,
   hasRoutine,
   hasMealPlan,
-  onAssignRoutine,
-  onAssignMealPlan,
+  hasActiveProgram,
+  onAssignProgram,
   onViewDetails,
 }: ClientCardProps) {
+  const goalLabel = client.goal ? GOAL_LABELS[client.goal] || client.goal : null
+
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
@@ -40,6 +43,11 @@ export function ClientCard({
           <div className="flex-1">
             <h3 className="font-semibold text-lg leading-none">{client.name}</h3>
             <p className="text-sm text-muted-foreground mt-1">{client.email}</p>
+            {goalLabel && (
+              <Badge variant="outline" className="mt-2 text-[10px]">
+                Meta: {goalLabel}
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -66,13 +74,9 @@ export function ClientCard({
         </div>
       </CardContent>
       <CardFooter className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onAssignRoutine} className="flex-1 bg-transparent">
-          <Dumbbell className="h-4 w-4 mr-1" />
-          Rutina
-        </Button>
-        <Button variant="outline" size="sm" onClick={onAssignMealPlan} className="flex-1 bg-transparent">
-          <UtensilsCrossed className="h-4 w-4 mr-1" />
-          Plan
+        <Button variant="outline" size="sm" onClick={onAssignProgram} className="flex-1 bg-transparent">
+          <ClipboardList className="h-4 w-4 mr-1" />
+          {hasActiveProgram ? "Actualizar" : "Programa"}
         </Button>
         <Button size="sm" onClick={onViewDetails} className="flex-1">
           Ver Detalles

@@ -39,8 +39,9 @@ import { TrainerInfoCard } from "./trainer-info-card"
 interface ClientDashboardProps { client: User }
 
 type AssignedRoutineForView = Omit<BaseRoutine, 'exercises'> & {
+  id?: string
   assignmentId?: string
-  routineProgress?: Array<{ routineId: string; exerciseId: string; setNumber: number; completedAt: string }>
+  routineProgress?: Array<{ routineId: string; exerciseId: string; setNumber: number; dateKey?: string | null; completedAt: string }>
   exercises: Array<{
     _id?: string
     exercise: { _id: string; name: string; image?: string; instructions?: string }
@@ -203,9 +204,15 @@ function PlanSection({
 export function ClientDashboard({ client }: ClientDashboardProps) {
   const [view, setView] = useState<"dashboard" | "calendar" | "body" | "messages" | "reports" | "profile">("dashboard")
   const [viewingRoutine, setViewingRoutine] = useState<AssignedRoutineForView | null>(null)
+  const [workoutDate, setWorkoutDate] = useState<string | undefined>(undefined)
   const [viewingMealPlan, setViewingMealPlan] = useState<AssignedMealPlanForView | null>(null)
   const [loading, setLoading] = useState(true)
   const [routine, setRoutine] = useState<AssignedRoutineForView | null>(null)
+  const [activeAssignment, setActiveAssignment] = useState<{
+    id?: string
+    _id?: string
+    routineProgress?: AssignedRoutineForView["routineProgress"]
+  } | null>(null)
   const [mealPlan, setMealPlan] = useState<AssignedMealPlanForView | null>(null)
   const [trainer, setTrainer] = useState<Trainer | null>(null)
   const [showCreateRoutine, setShowCreateRoutine] = useState(false)
@@ -238,17 +245,50 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
     const res = await fetch("/api/assignments", { credentials: "include" })
     if (!res.ok) return
     const data = await res.json()
-    const activeAssignment = data.assignments?.[0]
-    if (activeAssignment?.routineId) {
-      setRoutine({
-        ...activeAssignment.routineId,
-        id: activeAssignment.routineId.id || activeAssignment.routineId._id,
-        assignmentId: activeAssignment.id || activeAssignment._id,
-        routineProgress: activeAssignment.routineProgress || [],
-      } as AssignedRoutineForView)
+    const active = data.assignments?.[0]
+    if (active) {
+      setActiveAssignment({
+        id: active.id || active._id,
+        _id: active._id || active.id,
+        routineProgress: active.routineProgress || [],
+      })
     }
-    if (activeAssignment?.mealPlanId) setMealPlan(normalizeMealPlan(activeAssignment.mealPlanId))
+    if (active?.routineId) {
+      setRoutine({
+        ...active.routineId,
+        id: active.routineId.id || active.routineId._id,
+        assignmentId: active.id || active._id,
+        routineProgress: active.routineProgress || [],
+      } as AssignedRoutineForView)
+    } else {
+      setRoutine(null)
+    }
+    if (active?.mealPlanId) setMealPlan(normalizeMealPlan(active.mealPlanId))
+    else setMealPlan(null)
   }, [normalizeMealPlan])
+
+  const openWorkoutForDay = useCallback(async (dateKey: string, dayRoutineId?: string) => {
+    const targetRoutineId = dayRoutineId || routine?.id
+    if (!targetRoutineId) return
+
+    try {
+      const res = await fetch(`/api/routines/${targetRoutineId}`, { credentials: "include" })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || "No se pudo cargar la rutina del día")
+
+      const routineDoc = data.routine || data
+      setViewingRoutine({
+        ...routineDoc,
+        id: routineDoc.id || routineDoc._id,
+        assignmentId: activeAssignment?.id || activeAssignment?._id || routine?.assignmentId,
+        routineProgress: activeAssignment?.routineProgress || routine?.routineProgress || [],
+      } as AssignedRoutineForView)
+      setWorkoutDate(dateKey)
+      setView("dashboard")
+    } catch (error) {
+      console.error(error)
+    }
+  }, [routine, activeAssignment])
 
   useEffect(() => {
     const load = async () => {
@@ -288,11 +328,30 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
   }
 
   // ── Sub-views ────────────────────────────────────────────────────────────
-  if (view === "calendar") return <CalendarDashboard onBack={() => setView("dashboard")} assignmentId={routine?.assignmentId} />
-  if (view === "body") return <BodyProgressDashboard onBack={() => setView("dashboard")} userId={client.id} />
+  if (view === "calendar")
+    return (
+      <CalendarDashboard
+        onBack={() => setView("dashboard")}
+        assignmentId={routine?.assignmentId || activeAssignment?.id || activeAssignment?._id}
+        onOpenWorkout={(dateKey, dayRoutineId) => {
+          void openWorkoutForDay(dateKey, dayRoutineId)
+        }}
+      />
+    )
+  if (view === "body") return <BodyProgressDashboard onBack={() => setView("dashboard")} userId={client.id} gender={client.gender} />
   if (view === "messages") return <MessagesDashboard onBack={() => setView("dashboard")} userId={client.id} trainerId={trainer?.id || client.trainerId} />
   if (view === "reports") return <ReportsDashboard onBack={() => setView("dashboard")} userId={client.id} />
-  if (viewingRoutine) return <RoutineDetailView routine={viewingRoutine} onBack={() => setViewingRoutine(null)} />
+  if (viewingRoutine)
+    return (
+      <RoutineDetailView
+        routine={viewingRoutine}
+        workoutDate={workoutDate}
+        onBack={() => {
+          setViewingRoutine(null)
+          setWorkoutDate(undefined)
+        }}
+      />
+    )
   if (viewingMealPlan) return <MealPlanDetailView mealPlan={viewingMealPlan} onBack={() => setViewingMealPlan(null)} />
 
   // ── Profile view ─────────────────────────────────────────────────────────
@@ -390,7 +449,10 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
                 name={routine?.name}
                 meta={routine?.exercises?.length ? `${routine.exercises.length} ejercicios` : undefined}
                 empty="Sin rutina asignada"
-                onView={() => setViewingRoutine(routine)}
+                onView={() => {
+                  setWorkoutDate(new Date().toISOString().slice(0, 10))
+                  setViewingRoutine(routine)
+                }}
                 accent="bg-primary/5 hover:bg-primary/10 border-primary/20"
               />
               <PlanSection

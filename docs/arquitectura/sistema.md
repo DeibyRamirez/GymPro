@@ -1,5 +1,7 @@
 # Arquitectura del Sistema
 
+> **Última actualización:** Junio 26, 2026
+
 ## Visión General
 
 GymPro utiliza una arquitectura de **3 capas** basada en Next.js App Router, con un enfoque **multi-tenant** que permite aislar datos de múltiples gimnasios en una sola instancia.
@@ -92,22 +94,45 @@ export function TrainerInfoCard({ trainer }) {
 - JWT (jsonwebtoken)
 - Zod (validación)
 
-**Estructura de API:**
+**Estructura de API (actualizada):**
 ```
 app/api/
-├── auth/            # Login, registro, logout
-├── users/           # CRUD de usuarios
-├── gyms/            # CRUD de gimnasios
-├── routines/        # CRUD de rutinas
-├── exercises/       # CRUD de ejercicios
-├── meal-plans/      # CRUD de planes alimenticios
-├── assignments/     # CRUD de asignaciones
-├── calendar/        # CRUD de eventos
-├── products/        # CRUD de productos
-├── sales/           # Registro de ventas
-├── gym-equipment/   # CRUD de equipamiento
-├── messages/        # Sistema de mensajería
-└── dashboard/       # Estadísticas por rol
+├── auth/                    # Login, registro, logout, me
+├── users/                   # CRUD de usuarios, profile
+├── gyms/                    # CRUD de gimnasios
+├── routines/                # CRUD de rutinas (?templatesOnly=true)
+├── exercises/               # CRUD de ejercicios
+├── meal-plans/              # CRUD de planes (?templatesOnly=true)
+├── assignments/             # CRUD de asignaciones
+│   └── [id]/
+│       ├── program/         # PUT — actualizar programa (Fase 3)
+│       ├── calendar/        # GET — proyección mensual
+│       ├── day-complete/    # POST/GET — completitud diaria
+│       └── progress/        # POST — series por fecha
+├── activity-log/            # GET — bitácora admin
+├── notifications/           # unread-count, list, mark-read
+├── calendar/                # Eventos unificados
+├── products/                # Inventario
+├── sales/                   # Ventas POS
+├── gym-equipment/           # Equipamiento
+├── messages/                # Mensajería
+└── dashboard/               # Estadísticas por rol
+```
+
+**Módulos de dominio (`lib/`):**
+```
+lib/
+├── assignment/
+│   ├── program-service.ts   # buildProgramFromTemplates, clonación
+│   ├── day-completion.ts    # dateKey, streak, completitud
+│   ├── goal-tags.ts         # Filtro por meta del cliente
+│   └── ref-id.ts            # extractRefId, getDocumentId
+├── activity-log/            # recordActivitySafe, tipos
+├── meal-plan/templates.ts   # Filtro plantillas, deduplicación
+├── calendar/parse-event-date.ts
+├── auth-server.ts           # verifyAuth, assertSameGym
+├── csrf.ts                  # assertCsrf
+└── models/                  # 14 schemas Mongoose
 ```
 
 **Patrón de Autenticación:**
@@ -162,19 +187,43 @@ return NextResponse.json({
 - MongoDB (base de datos NoSQL)
 - Mongoose (ODM con schemas y validación)
 
-**Modelos Principales:**
-1. **User**: Usuarios con roles (superadmin, admin, trainer, client)
-2. **Gym**: Gimnasios con subdominios únicos (multi-tenant)
-3. **Routine**: Plantillas de entrenamiento reutilizables
-4. **Exercise**: Catálogo de ejercicios
-5. **Assignment**: Vincula cliente + trainer + rutina + plan
-6. **MealPlan**: Planes nutricionales
-7. **CalendarEvent**: Eventos unificados (entrenamientos, clases, privados)
-8. **Product**: Inventario de productos
-9. **Sale**: Registro de ventas
-10. **GymEquipment**: Equipamiento del gimnasio
-11. **Message**: Mensajería entre usuarios
-12. **BodyMeasurement**: Mediciones corporales
+**Modelos Principales (14):**
+1. **User** — Roles, perfil, `goal`, `trainerId`
+2. **Gym** — Multi-tenant, slug
+3. **Routine** — Plantilla (`isTemplate`) o clon (`sourceRoutineId`)
+4. **Exercise** — Catálogo; clon con `sourceExerciseId`
+5. **MealPlan** — Plantilla o clon (`sourceMealPlanId`, `isTemplate`)
+6. **Assignment** — Programa activo del cliente
+7. **CalendarEvent** — Eventos unificados
+8. **Product** / **Sale** — Inventario y POS
+9. **GymEquipment** — Equipamiento
+10. **Message** — Mensajería
+11. **BodyMeasurement** — Progreso corporal
+12. **Notification** — Notificaciones in-app
+13. **ActivityLog** — Bitácora del sistema
+
+**Campos clave en Assignment:**
+```typescript
+{
+  clientId, trainerId, gymId,
+  routineId,           // Rutina principal (referencia)
+  mealPlanId,          // Plan clonado del cliente
+  durationWeeks,
+  weeklySchedule: [{
+    dayOfWeek: 0-6,
+    isRestDay: boolean,
+    routineId,         // Rutina clonada del día (puede variar)
+    mealPlanId,
+    title, notes
+  }],
+  routineProgress: [{ routineId, exerciseId, setNumber, dateKey, completedAt }],
+  dayCompletions: [{ dateKey, workoutCompleted, nutritionCompleted, dayCompleted }],
+  status: 'active' | 'completed' | 'pending' | 'cancelled'
+}
+```
+
+**Nota sobre serialización `id` / `_id`:**
+Varios modelos (`Assignment`, `MealPlan`, `Routine`) transforman `_id` → `id` en `toJSON`. Los endpoints que usan `.lean()` devuelven `_id` sin `id`. El frontend y servicios deben normalizar con `getDocumentId()` o `doc.id || doc._id`.
 
 **Patrón de Schema:**
 ```typescript
@@ -276,12 +325,19 @@ alpha.gympro.com/dashboard
       │         │         └── sourceRoutineId (clonación)
       │         │
       │         ├──< (N) MealPlan
+      │         │         └── sourceMealPlanId (clonación)
       │         │
       │         └──< (N) Assignment
       │                   │
-      │                   ├── routineId (clonada)
-      │                   ├── mealPlanId
+      │                   ├── routineId / mealPlanId (clones)
+      │                   ├── weeklySchedule[].routineId (por día)
+      │                   ├── routineProgress[] (con dateKey)
+      │                   ├── dayCompletions[] (racha)
       │                   └──< (N) CalendarEvent
+      │
+      ├──< (N) ActivityLog (bitácora admin)
+      │
+      ├──< (N) Notification
       │
       ├──< (N) Product ──< (N) Sale
       │
@@ -294,35 +350,74 @@ alpha.gympro.com/dashboard
 
 ## Flujo de Datos: Caso de Uso Típico
 
-### Escenario: Entrenador asigna rutina a cliente
+### Escenario: Entrenador asigna o actualiza programa
 
 ```
-1. PRESENTACIÓN (UI)
-   - Trainer abre formulario de asignación
-   - Selecciona cliente, rutina, plan alimenticio, duración
-   
-2. LÓGICA DE NEGOCIO (API)
-   POST /api/assignments
-   │
-   ├── Verifica autenticación (JWT)
-   ├── Valida rol === 'trainer'
-   ├── Valida que cliente pertenece al trainer
-   ├── Clona rutina original (deep copy)
-   │   ├── Crea nueva Routine con isTemplate=false
-   │   └── Clona todos los Exercise de la rutina
-   ├── Crea Assignment con routineId clonada
-   └── Genera CalendarEvents por cada día programado
-   
-3. PERSISTENCIA (MongoDB)
-   - Guarda Assignment en DB
-   - Guarda Routine clonada
-   - Guarda Exercises clonados
-   - Guarda CalendarEvents
-   
-4. RESPUESTA
-   - Retorna Assignment con datos populados
-   - Cliente ve nueva asignación en su dashboard
-   - Calendario se actualiza automáticamente
+1. PRESENTACIÓN
+   - Trainer abre AssignProgramDialog
+   - Selecciona rutina(s), plan opcional, días activos
+   - Modo avanzado: rutina distinta por día
+
+2. LÓGICA DE NEGOCIO
+   Si NO hay asignación activa:
+     POST /api/assignments
+       ├── assertCsrf + verifyAuth
+       ├── 409 si ya existe assignment activo
+       └── buildProgramFromTemplates()
+             ├── Clona rutina(s) por plantilla (cache por templateId)
+             ├── Clona meal plan (sourceMealPlanId, isTemplate: false)
+             └── Arma weeklySchedule con routineId/mealPlanId por día
+
+   Si YA hay asignación activa:
+     PUT /api/assignments/[id]/program
+       ├── Misma lógica de clonación
+       ├── Preserva dayCompletions / routineProgress (salvo resetProgress)
+       └── No crea Assignment duplicado
+
+3. PERSISTENCIA
+   - Assignment actualizado o creado
+   - Rutinas/planes clonados independientes de plantillas
+
+4. CLIENTE
+   - GET /api/assignments/[id]/calendar → días, comidas, rutina por weekday
+   - POST day-complete → racha
+   - POST progress con date → series del día
+   - "Ir a rutina del día" carga rutina correcta vía routineId del calendario
+```
+
+### Diagrama: flujo trainer → cliente
+
+```mermaid
+sequenceDiagram
+  participant T as Trainer
+  participant UI as AssignProgramDialog
+  participant API as API Assignments
+  participant PS as program-service
+  participant DB as MongoDB
+  participant C as Cliente
+  participant Cal as calendar-dashboard
+
+  T->>UI: Selecciona rutina(s), plan, días
+  UI->>API: POST o PUT /program
+  API->>PS: buildProgramFromTemplates()
+  PS->>DB: Clona rutinas + plan (isTemplate false)
+  PS->>DB: Guarda Assignment + weeklySchedule
+  API-->>UI: 201 / 200
+
+  C->>Cal: Abre calendario
+  Cal->>API: GET /assignments/[id]/calendar
+  API->>DB: Proyecta días, rutina por weekday, mealsToday
+  API-->>Cal: events + streak
+
+  C->>Cal: Marca entrenamiento / nutrición / día
+  Cal->>API: POST /day-complete
+  API->>DB: dayCompletions[]
+  API-->>Cal: streak actualizado
+
+  C->>Cal: Ir a rutina del día
+  Cal->>API: GET /routines/[routineId del día]
+  C->>API: POST /progress (dateKey)
+  API->>DB: routineProgress[]
 ```
 
 ## Patrones de Seguridad

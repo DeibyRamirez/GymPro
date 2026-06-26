@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Meal, MealPlan } from "@/lib/data";
 import { Flame, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { getDocumentId } from "@/lib/assignment/ref-id";
 
 interface EditMealPlanDialogProps {
   open: boolean;
@@ -32,25 +33,33 @@ interface MealForm extends Omit<Meal, "foods"> {
   fats: string;
 }
 
-export function EditMealPlanDialog({
-  open,
-  onOpenChange,
+function buildInitialMeals(plan: MealPlan): MealForm[] {
+  return (plan.meals || []).map((meal, index) => ({
+    ...meal,
+    id: meal.id || `${meal.name || "meal"}-${index}`,
+    foods: Array.isArray(meal.foods) ? meal.foods.join(", ") : "",
+    protein: meal.macros?.protein?.toString() || "",
+    carbs: meal.macros?.carbs?.toString() || "",
+    fats: meal.macros?.fats?.toString() || "",
+  }));
+}
+
+function EditMealPlanForm({
   plan,
+  onOpenChange,
   onUpdated,
-}: EditMealPlanDialogProps) {
-  const [name, setName] = useState(plan.name);
-  const [description, setDescription] = useState(plan.description);
-  const [totalCalories, setTotalCalories] = useState(plan.calories.toString());
-  const [meals, setMeals] = useState<MealForm[]>(
-    plan.meals.map((meal) => ({
-      ...meal,
-      foods: meal.foods.join(", "),
-      protein: meal.macros?.protein?.toString() || "",
-      carbs: meal.macros?.carbs?.toString() || "",
-      fats: meal.macros?.fats?.toString() || "",
-    }))
-  );
+}: {
+  plan: MealPlan;
+  onOpenChange: (open: boolean) => void;
+  onUpdated?: () => void;
+}) {
+  const [name, setName] = useState(() => plan.name || "");
+  const [description, setDescription] = useState(() => plan.description || "");
+  const [totalCalories, setTotalCalories] = useState(() => String(plan.calories ?? ""));
+  const [meals, setMeals] = useState<MealForm[]>(() => buildInitialMeals(plan));
   const [loading, setLoading] = useState(false);
+
+  const planId = getDocumentId(plan) || plan._id || plan.id;
 
   const addMeal = () => {
     setMeals([
@@ -92,6 +101,11 @@ export function EditMealPlanDialog({
 
   // ✅ Actualizar plan
   const handleSave = async () => {
+    if (!planId) {
+      alert("Error: el plan no tiene ID válido.");
+      return;
+    }
+
     setLoading(true);
     try {
       const updatedPlan = {
@@ -109,14 +123,7 @@ export function EditMealPlanDialog({
         })),
       };
 
-      const planId = plan._id || plan.id;
-      if (!planId) {
-        alert("Error: el plan no tiene ID válido.");
-        return;
-      }
-
-      console.log("🧠 ID del plan que se intenta actualizar:", plan._id);
-      const res = await fetch(`/api/meal-plans/${plan._id || plan.id}`, {
+      const res = await fetch(`/api/meal-plans/${planId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -144,17 +151,17 @@ export function EditMealPlanDialog({
 
   // ✅ Eliminar plan
   const handleDeletePlan = async () => {
+    if (!planId) {
+      alert("Error: el plan no tiene ID válido.");
+      return;
+    }
+
     if (!confirm("¿Seguro que deseas eliminar este plan alimenticio?")) return;
 
     setLoading(true);
     try {
 
-      const planId = plan._id || plan.id;
-      if (!planId) {
-        alert("Error: el plan no tiene ID válido.");
-        return;
-      }
-      const res = await fetch(`/api/meal-plans/${plan._id || plan.id}`, {
+      const res = await fetch(`/api/meal-plans/${planId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -179,16 +186,15 @@ export function EditMealPlanDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>Editar Plan Alimenticio</DialogTitle>
-          <DialogDescription>
-            Modifica la información del plan y sus comidas
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle>Editar Plan Alimenticio</DialogTitle>
+        <DialogDescription>
+          Modifica la información del plan y sus comidas
+        </DialogDescription>
+      </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
+      <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-6">
             {/* Información básica */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -324,6 +330,29 @@ export function EditMealPlanDialog({
             Guardar Cambios
           </Button>
         </DialogFooter>
+    </>
+  );
+}
+
+export function EditMealPlanDialog({
+  open,
+  onOpenChange,
+  plan,
+  onUpdated,
+}: EditMealPlanDialogProps) {
+  const planId = getDocumentId(plan) || plan._id || plan.id;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh]">
+        {open ? (
+          <EditMealPlanForm
+            key={planId}
+            plan={plan}
+            onOpenChange={onOpenChange}
+            onUpdated={onUpdated}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

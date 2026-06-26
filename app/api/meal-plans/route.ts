@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-server';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import connectDB from '@/lib/mongodb';
 import MealPlan from '@/lib/models/MealPlan';
+import {
+  buildMealPlanTemplateFilter,
+  dedupeMealPlanTemplates,
+} from '@/lib/meal-plan/templates';
 import { buildPagination, parsePagination } from '@/lib/pagination';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
@@ -26,44 +31,59 @@ export async function GET(req: NextRequest) {
 
     // Construir filtros
     const filters: Record<string, unknown> = {};
+    const andFilters: Record<string, unknown>[] = [];
+
     if (user.gymId) {
       filters.gymId = user.gymId;
     }
     
-    // Solo admins y trainers pueden ver todos los planes
     if (user.role === 'client') {
-      // Los clientes solo ven planes asignados a ellos
-      filters.$or = [
-        { createdBy: user._id },
-        // Aquí podrías agregar lógica para planes asignados
-      ];
+      filters.createdBy = user._id;
     } else if (user.role === 'trainer') {
-      // Los trainers ven sus propios planes
       filters.createdBy = user._id;
     }
-    // Los admins ven todos los planes (sin filtro adicional)
 
     if (search) {
-      filters.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+      andFilters.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+        ],
+      });
     }
 
     if (difficulty) {
       filters.difficulty = difficulty;
     }
 
+    const templatesOnly = searchParams.get('templatesOnly') === 'true';
+
+    if (templatesOnly) {
+      andFilters.push(buildMealPlanTemplateFilter() as Record<string, unknown>);
+    }
+
     filters.isActive = true;
 
-    const [mealPlans, total] = await Promise.all([
-      MealPlan.find(filters)
-        .populate('createdBy', 'name email')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      MealPlan.countDocuments(filters)
-    ]);
+    if (andFilters.length > 0) {
+      filters.$and = andFilters;
+    }
+
+    let mealPlans = await MealPlan.find(filters)
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(templatesOnly ? limit * 3 : limit)
+      .lean();
+
+    if (templatesOnly) {
+      mealPlans = dedupeMealPlanTemplates(mealPlans).slice(0, limit);
+    }
+
+    const total = templatesOnly
+      ? dedupeMealPlanTemplates(
+          await MealPlan.find(filters).populate('createdBy', 'name email').sort({ createdAt: 1 }).lean(),
+        ).length
+      : await MealPlan.countDocuments(filters);
 
     return NextResponse.json({
       mealPlans,
@@ -124,9 +144,23 @@ export async function POST(req: NextRequest) {
       tags: tags || [],
       createdBy: user._id,
       gymId: user.gymId || null,
+      isTemplate: true,
+      sourceMealPlanId: null,
     });
 
     await mealPlan.save();
+
+    recordActivitySafe({
+      gymId: user.gymId,
+      actorId: user._id,
+      actorName: user.name,
+      actorAvatar: user.avatar,
+      action: 'meal_plan.create',
+      summary: `creó el plan alimenticio "${mealPlan.name}"`,
+      targetType: 'MealPlan',
+      targetId: mealPlan._id,
+      targetLabel: mealPlan.name,
+    });
 
     // Obtener el plan creado con los datos del creador
     const createdMealPlan = await MealPlan.findById(mealPlan._id)

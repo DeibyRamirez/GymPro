@@ -72,3 +72,12 @@ export function getSendGridConfig(): { apiKey: string; fromEmail: string; fromNa
     fromName: process.env.SENDGRID_FROM_NAME?.trim() || 'GymPro',
   }
 }
+
+/** URL base de la app (links en emails de invitación). */
+export function getAppUrl(): string {
+  const url =
+    process.env.APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    'http://localhost:3000'
+  return url.replace(/\/$/, '')
+}

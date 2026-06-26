@@ -1,10 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ExerciseCard } from "./exercise-card"
 import { ArrowLeft, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
+
+type RoutineProgressEntry = {
+  routineId: string
+  exerciseId: string
+  setNumber: number
+  dateKey?: string | null
+  completedAt?: string
+}
+
 type AssignedRoutine = {
   id?: string
   assignmentId?: string
@@ -12,6 +21,7 @@ type AssignedRoutine = {
   description: string
   duration: string
   difficulty: "beginner" | "intermediate" | "advanced"
+  routineProgress?: RoutineProgressEntry[]
   exercises: Array<{
     _id?: string
     exercise: {
@@ -29,6 +39,7 @@ type AssignedRoutine = {
 
 interface RoutineDetailViewProps {
   routine: AssignedRoutine
+  workoutDate?: string
   onBack: () => void
 }
 
@@ -44,8 +55,25 @@ const difficultyLabels = {
   advanced: "Avanzado",
 }
 
-export function RoutineDetailView({ routine, onBack }: RoutineDetailViewProps) {
-  const [completed, setCompleted] = useState<Record<string, boolean>>({})
+export function RoutineDetailView({ routine, workoutDate, onBack }: RoutineDetailViewProps) {
+  const progressDate = workoutDate || new Date().toISOString().slice(0, 10)
+
+  const initialCompleted = useMemo(() => {
+    const map: Record<string, boolean> = {}
+    for (const entry of routine.routineProgress || []) {
+      const entryDate = entry.dateKey || entry.completedAt?.slice(0, 10)
+      if (entryDate !== progressDate) continue
+      map[`${entry.exerciseId}-${entry.setNumber}`] = true
+    }
+    return map
+  }, [routine.routineProgress, progressDate])
+
+  const [localCompleted, setLocalCompleted] = useState<Record<string, boolean>>({})
+
+  const completed = useMemo(
+    () => ({ ...initialCompleted, ...localCompleted }),
+    [initialCompleted, localCompleted],
+  )
 
   const markSetCompleted = async (exerciseId: string, setNumber: number) => {
     if (!routine.assignmentId) return
@@ -61,11 +89,12 @@ export function RoutineDetailView({ routine, onBack }: RoutineDetailViewProps) {
         routineId: routine.id,
         exerciseId,
         setNumber,
+        date: progressDate,
       }),
     })
 
     if (response.ok) {
-      setCompleted((current) => ({ ...current, [key]: true }))
+      setLocalCompleted((current) => ({ ...current, [key]: true }))
     }
   }
 
@@ -81,6 +110,16 @@ export function RoutineDetailView({ routine, onBack }: RoutineDetailViewProps) {
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tight text-balance">{routine.name}</h2>
             <p className="text-muted-foreground text-lg leading-relaxed">{routine.description}</p>
+            {workoutDate && (
+              <p className="text-sm text-muted-foreground">
+                Entrenamiento del{" "}
+                {new Date(`${workoutDate}T12:00:00`).toLocaleDateString("es-ES", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </p>
+            )}
           </div>
           <Badge variant="secondary" className={`${difficultyColors[routine.difficulty]} text-sm px-3 py-1`}>
             {difficultyLabels[routine.difficulty]}

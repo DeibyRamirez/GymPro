@@ -15,6 +15,7 @@ import Sale from '@/lib/models/Sale'
 import User from '@/lib/models/User'
 import { assertCsrf } from '@/lib/csrf'
 import { auditLog } from '@/lib/audit-log'
+import { recordActivitySafe } from '@/lib/activity-log/record'
 import { buildPagination, parsePagination } from '@/lib/pagination'
 
 export async function GET(req: NextRequest) {
@@ -116,6 +117,18 @@ export async function POST(req: NextRequest) {
       saleId: sale._id.toString(),
       total,
       gymId: user.gymId?.toString() || null,
+    })
+
+    recordActivitySafe({
+      gymId: user.gymId,
+      actorId: user._id,
+      actorName: user.name,
+      actorAvatar: user.avatar,
+      action: 'sale.create',
+      summary: `registró una venta por $${total.toFixed(2)}`,
+      targetType: 'Sale',
+      targetId: sale._id,
+      metadata: { total, itemCount: normalizedItems.length },
     })
 
     return NextResponse.json({ sale }, { status: 201 })

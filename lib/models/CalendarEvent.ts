@@ -17,6 +17,9 @@ export interface ICalendarEvent extends Document {
   assignmentId?: mongoose.Types.ObjectId;
   capacity?: number;
   bookedCount?: number;
+  invitedUserIds?: mongoose.Types.ObjectId[];
+  confirmedUserIds?: mongoose.Types.ObjectId[];
+  declinedUserIds?: mongoose.Types.ObjectId[];
   attendanceCode?: string;
   duration?: number; // en minutos
   reminder?: {
@@ -99,6 +102,18 @@ const CalendarEventSchema = new Schema<ICalendarEvent>({
     default: 0,
     min: 0
   },
+  invitedUserIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  confirmedUserIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  declinedUserIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
   attendanceCode: {
     type: String,
     trim: true
@@ -140,6 +155,7 @@ CalendarEventSchema.index({ gymId: 1, date: 1 });
 CalendarEventSchema.index({ type: 1 });
 CalendarEventSchema.index({ completed: 1 });
 CalendarEventSchema.index({ date: 1 });
+CalendarEventSchema.index({ invitedUserIds: 1 });
 
 const CalendarEvent = mongoose.models.CalendarEvent || mongoose.model<ICalendarEvent>('CalendarEvent', CalendarEventSchema);
 

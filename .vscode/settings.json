@@ -10,5 +10,6 @@
     "javascriptreact",
     "typescriptreact"
   ],
-  "typescript.preferences.importModuleSpecifier": "relative"
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "postman.settings.dotenv-detection-notification-visibility": false
 }

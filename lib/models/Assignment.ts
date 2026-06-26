@@ -28,7 +28,16 @@ export interface IAssignment extends Document {
     routineId: mongoose.Types.ObjectId;
     exerciseId: mongoose.Types.ObjectId;
     setNumber: number;
+    dateKey?: string;
     completedAt: Date;
+  }[];
+  dayCompletions?: {
+    dateKey: string;
+    workoutCompleted: boolean;
+    nutritionCompleted: boolean;
+    dayCompleted: boolean;
+    completedAt?: Date | null;
+    note?: string | null;
   }[];
   createdAt: Date;
   updatedAt: Date;
@@ -139,7 +148,7 @@ const AssignmentSchema = new Schema<IAssignment>({
       maxlength: [500, 'Las notas no pueden exceder 500 caracteres']
     }
   }]
-  ,routineProgress: [{
+  ,  routineProgress: [{
     routineId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Routine',
@@ -155,11 +164,28 @@ const AssignmentSchema = new Schema<IAssignment>({
       required: true,
       min: 1
     },
+    dateKey: {
+      type: String,
+      match: [/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'],
+      default: null,
+    },
     completedAt: {
       type: Date,
       required: true,
       default: Date.now
     }
+  }],
+  dayCompletions: [{
+    dateKey: {
+      type: String,
+      required: true,
+      match: [/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'],
+    },
+    workoutCompleted: { type: Boolean, default: false },
+    nutritionCompleted: { type: Boolean, default: false },
+    dayCompleted: { type: Boolean, default: false },
+    completedAt: { type: Date, default: null },
+    note: { type: String, maxlength: 500, default: null },
   }]
 }, {
   timestamps: true,
@@ -196,6 +222,7 @@ AssignmentSchema.index({ gymId: 1 });
 AssignmentSchema.index({ status: 1 });
 AssignmentSchema.index({ startDate: 1 });
 AssignmentSchema.index({ endDate: 1 });
+AssignmentSchema.index({ 'dayCompletions.dateKey': 1 });
 
 const Assignment = mongoose.models.Assignment || mongoose.model<IAssignment>('Assignment', AssignmentSchema);
 

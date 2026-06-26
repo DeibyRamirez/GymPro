@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-server';
+import { recordActivitySafe } from '@/lib/activity-log/record';
 import connectDB from '@/lib/mongodb';
 import Routine from '@/lib/models/Routine';
 import Exercise from '@/lib/models/Exercise';
@@ -68,6 +69,11 @@ export async function GET(req: NextRequest) {
 
     if (difficulty) {
       filters.difficulty = difficulty;
+    }
+
+    const templatesOnly = searchParams.get('templatesOnly');
+    if (templatesOnly === 'true') {
+      filters.isTemplate = { $ne: false };
     }
 
     filters.isActive = true;
@@ -201,6 +207,18 @@ export async function POST(req: NextRequest) {
     });
 
     await routine.save();
+
+    recordActivitySafe({
+      gymId: user.gymId,
+      actorId: user._id,
+      actorName: user.name,
+      actorAvatar: user.avatar,
+      action: 'routine.create',
+      summary: `creó la rutina "${routine.name}"`,
+      targetType: 'Routine',
+      targetId: routine._id,
+      targetLabel: routine.name,
+    });
 
     // Poblar para respuesta
     const populatedRoutine = await Routine.findById(routine._id)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -18,11 +18,12 @@ import { Card } from "@/components/ui/card"
 import { Plus, Trash2, ImageIcon } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { Routine, Exercise } from "@/lib/data"
+import { getDocumentId } from "@/lib/assignment/ref-id"
 
 interface EditRoutineDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  routine: Routine
+  routine: Routine & { id?: string; trainingDaysPerWeek?: number }
   onUpdated?: () => void
 }
 
@@ -34,21 +35,66 @@ interface ExerciseForm extends Exercise {
   image: string
 }
 
-export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: EditRoutineDialogProps) {
-  const [name, setName] = useState(routine.name)
-  const [description, setDescription] = useState(routine.description)
-  const [duration, setDuration] = useState(routine.duration)
-  const [difficulty, setDifficulty] = useState(routine.difficulty)
-  const [trainingDaysPerWeek, setTrainingDaysPerWeek] = useState(String((routine as Routine & { trainingDaysPerWeek?: number }).trainingDaysPerWeek || 5))
-  const [exercises, setExercises] = useState<ExerciseForm[]>(routine.exercises)
+function normalizeExercisesForForm(raw: unknown): ExerciseForm[] {
+  if (!Array.isArray(raw)) return []
+
+  return raw.map((item, index) => {
+    const entry = item as {
+      _id?: string
+      id?: string
+      name?: string
+      sets?: number
+      reps?: string
+      rest?: string
+      instructions?: string
+      image?: string
+      exercise?: {
+        _id?: string
+        id?: string
+        name?: string
+        sets?: number
+        reps?: string
+        rest?: string
+        instructions?: string
+        image?: string
+      }
+    }
+
+    const nested = entry.exercise
+    return {
+      id: entry.id || entry._id || nested?.id || nested?._id || String(index),
+      name: nested?.name || entry.name || "",
+      sets: Number(entry.sets ?? nested?.sets ?? 0),
+      reps: String(entry.reps ?? nested?.reps ?? ""),
+      rest: String(entry.rest ?? nested?.rest ?? ""),
+      instructions: String(entry.instructions ?? nested?.instructions ?? ""),
+      image: String(nested?.image || entry.image || ""),
+    }
+  })
+}
+
+function EditRoutineForm({
+  routine,
+  onOpenChange,
+  onUpdated,
+}: {
+  routine: EditRoutineDialogProps["routine"]
+  onOpenChange: (open: boolean) => void
+  onUpdated?: () => void
+}) {
+  const [name, setName] = useState(() => routine.name || "")
+  const [description, setDescription] = useState(() => routine.description || "")
+  const [duration, setDuration] = useState(() => routine.duration || "")
+  const [difficulty, setDifficulty] = useState<Routine["difficulty"]>(() => routine.difficulty || "beginner")
+  const [trainingDaysPerWeek, setTrainingDaysPerWeek] = useState(() =>
+    String(routine.trainingDaysPerWeek || 5),
+  )
+  const [exercises, setExercises] = useState<ExerciseForm[]>(() =>
+    normalizeExercisesForForm(routine.exercises),
+  )
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    console.log("📦 Rutina recibida en EditRoutineDialog:", routine);
-  }, [routine]);
-
-
-  // ➕ Agregar un nuevo ejercicio
+  const routineId = getDocumentId(routine) || routine._id || routine.id
   const addExercise = () => {
     setExercises([
       ...exercises,
@@ -64,17 +110,14 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
     ])
   }
 
-  // 🗑️ Eliminar un ejercicio
   const removeExercise = (id: string) => {
     setExercises(exercises.filter((ex) => ex.id !== id))
   }
 
-  // ✏️ Actualizar campos del ejercicio
   const updateExercise = (id: string, field: keyof ExerciseForm, value: string | number) => {
     setExercises(exercises.map((ex) => (ex.id === id ? { ...ex, [field]: value } : ex)))
   }
 
-  // ⚠️ Manejo de errores detallado
   const handleApiError = async (res: Response) => {
     let message = `Error ${res.status}: ${res.statusText}`
     try {
@@ -84,13 +127,11 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
     } catch {
       // ignorar si no hay JSON
     }
-    console.error(`❌ Respuesta del servidor (${res.status}):`, message)
     alert(message)
   }
 
-  // ✅ Guardar cambios en la rutina
   const handleSave = async () => {
-    if (!routine?._id) {
+    if (!routineId) {
       alert("Error: la rutina no tiene un ID válido.")
       return
     }
@@ -113,9 +154,7 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
         })),
       }
 
-      console.log("🧠 ID de la rutina que se intenta actualizar:", routine._id)
-
-      const res = await fetch(`/api/routines/${routine._id}`, {
+      const res = await fetch(`/api/routines/${routineId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -129,22 +168,18 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
         return
       }
 
-      const data = await res.json()
-      console.log("✅ Rutina actualizada:", data)
       alert("Rutina actualizada correctamente.")
       onOpenChange(false)
       onUpdated?.()
     } catch (err: unknown) {
-      console.error("❌ Error de red o ejecución:", err)
       alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }
   }
 
-  // ❌ Eliminar rutina
   const handleDeleteRoutine = async () => {
-    if (!routine?._id) {
+    if (!routineId) {
       alert("Error: la rutina no tiene un ID válido.")
       return
     }
@@ -153,7 +188,7 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/routines/${routine._id}`, {
+      const res = await fetch(`/api/routines/${routineId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -166,12 +201,10 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
         return
       }
 
-      console.log("🗑️ Rutina eliminada correctamente")
       alert("Rutina eliminada correctamente.")
       onOpenChange(false)
       onUpdated?.()
     } catch (err: unknown) {
-      console.error("❌ Error de red o ejecución:", err)
       alert(`Error de red o ejecución: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
@@ -179,16 +212,14 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>Editar Rutina</DialogTitle>
-          <DialogDescription>Modifica la información de la rutina y sus ejercicios.</DialogDescription>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle>Editar Rutina</DialogTitle>
+        <DialogDescription>Modifica la información de la rutina y sus ejercicios.</DialogDescription>
+      </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
+      <ScrollArea className="max-h-[60vh] pr-4">
           <div className="space-y-6">
-            {/* Información básica */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Nombre de la Rutina</Label>
@@ -208,7 +239,7 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
 
             <div className="space-y-2">
               <Label>Nivel de Dificultad</Label>
-              <Select value={difficulty} onValueChange={(value: 'beginner' | 'intermediate' | 'advanced') => setDifficulty(value)}>
+              <Select value={difficulty} onValueChange={(value: Routine["difficulty"]) => setDifficulty(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un nivel" />
                 </SelectTrigger>
@@ -234,7 +265,6 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
               </Select>
             </div>
 
-            {/* Ejercicios */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base">Ejercicios</Label>
@@ -341,6 +371,24 @@ export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: Ed
             Guardar Cambios
           </Button>
         </DialogFooter>
+    </>
+  )
+}
+
+export function EditRoutineDialog({ open, onOpenChange, routine, onUpdated }: EditRoutineDialogProps) {
+  const routineId = getDocumentId(routine) || routine._id || routine.id
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh]">
+        {open ? (
+          <EditRoutineForm
+            key={routineId}
+            routine={routine}
+            onOpenChange={onOpenChange}
+            onUpdated={onUpdated}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   )

@@ -1,6 +1,19 @@
 # Documentación del Proyecto GymPro
 
+> **Última actualización general:** Junio 26, 2026 — v1.1 (Fases 1–3 programas, bitácora admin, plantillas/clones)
+
 Esta carpeta contiene la documentación completa del proyecto GymPro, organizada por categorías para facilitar la comprensión del sistema.
+
+## Cambios recientes documentados
+
+| Área | Qué se actualizó |
+|------|------------------|
+| [Alcance](./alcance/funcionalidades.md) | Fases 1–3, APIs de assignments, bitácora, plantillas |
+| [Arquitectura](./arquitectura/sistema.md) | `program-service`, endpoints nuevos, 14 modelos |
+| [Patrones](./patrones/diseno.md) | Clonación centralizada, create vs update |
+| [Evaluación](./evaluacion/estado-actual.md) | v1.1, bugs resueltos, deuda técnica |
+| [Pruebas](./pruebas/estrategia.md) | Casos críticos prioritarios v1.1 |
+| [Changelog](./changelog.md) | Historial de versiones y sprints |
 
 ## Estructura de Documentación
 
@@ -61,6 +74,13 @@ Evaluación del estado actual del proyecto.
 - [estado-actual.md](./evaluacion/estado-actual.md) - Funcionalidades completadas, evaluación técnica, bugs conocidos, deuda técnica, métricas
 
 **Cuándo consultar:** Para auditorías, planificación de sprints o presentaciones a stakeholders.
+
+---
+
+### 📜 [Changelog](./changelog.md)
+Historial de versiones y cambios por milestone.
+
+**Cuándo consultar:** Para ver qué se entregó en cada fase o preparar release notes.
 
 ---
 

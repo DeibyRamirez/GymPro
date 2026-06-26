@@ -35,9 +35,10 @@ Los gimnasios modernos enfrentan múltiples desafíos en la gestión diaria de s
 **GymPro** es una plataforma SaaS multi-tenant que centraliza todas las operaciones de un gimnasio en un solo sistema:
 
 - Gestión de usuarios por roles (superadmin, admin, trainer, client)
-- Sistema de asignaciones con rutinas y planes alimenticios personalizados
-- Calendario unificado con clases grupales y seguimiento
+- Sistema de asignaciones con rutinas y planes alimenticios **personalizados por cliente**
+- Calendario unificado con clases grupales, **completitud diaria y rachas**
 - Seguimiento de progreso físico con gráficos
+- **Bitácora de actividad** para administradores del gimnasio
 - Punto de venta (POS) integrado con inventario
 - Mensajería interna trainer-cliente
 - Portal público personalizado por gimnasio
