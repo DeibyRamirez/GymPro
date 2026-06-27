@@ -33,15 +33,27 @@ export function middleware(req: NextRequest) {
 
 function getSubdomain(host: string) {
   const hostname = host.split(':')[0]
-  const parts = hostname.split('.')
+
+  // URLs de Vercel (project.vercel.app) no son tenants; son el dominio raíz del deploy.
+  if (hostname.endsWith('.vercel.app')) {
+    return ''
+  }
 
   // En localhost usamos el primer segmento como tenant: alpha.localhost:3000.
   if (hostname.includes('localhost')) {
+    const parts = hostname.split('.')
     return parts.length > 1 ? parts[0] : ''
   }
 
-  // En producción asumimos subdominio + dominio raíz: alpha.gympro.com.
-  return parts.length > 2 ? parts[0] : ''
+  const parts = hostname.split('.')
+
+  // Dominio raíz (ej. gympro.com) sin subdominio de tenant.
+  if (parts.length <= 2) {
+    return ''
+  }
+
+  // En producción: alpha.gympro.com → alpha
+  return parts[0]
 }
 
 export const config = {

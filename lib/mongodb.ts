@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fitpro';
+const MONGODB_URI =
+  process.env.MONGODB_URI?.trim() ||
+  (process.env.NODE_ENV !== 'production' ? 'mongodb://localhost:27017/fitpro' : '')
 
 if (!MONGODB_URI) {
-  throw new Error('Por favor defina la variable de entorno MONGODB_URI en su archivo .env.local');
+  throw new Error('Define MONGODB_URI en las variables de entorno (Vercel → Settings → Environment Variables).')
 }
 
 interface MongooseCache {
