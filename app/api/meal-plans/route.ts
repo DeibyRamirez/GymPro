@@ -6,6 +6,7 @@ import MealPlan from '@/lib/models/MealPlan';
 import {
   buildMealPlanTemplateFilter,
   dedupeMealPlanTemplates,
+  type MealPlanLike,
 } from '@/lib/meal-plan/templates';
 import { buildPagination, parsePagination } from '@/lib/pagination';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(templatesOnly ? limit * 3 : limit)
-      .lean();
+      .lean<MealPlanLike[]>();
 
     if (templatesOnly) {
       mealPlans = dedupeMealPlanTemplates(mealPlans).slice(0, limit);
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     const total = templatesOnly
       ? dedupeMealPlanTemplates(
-          await MealPlan.find(filters).populate('createdBy', 'name email').sort({ createdAt: 1 }).lean(),
+          await MealPlan.find(filters).populate('createdBy', 'name email').sort({ createdAt: 1 }).lean<MealPlanLike[]>(),
         ).length
       : await MealPlan.countDocuments(filters);
 

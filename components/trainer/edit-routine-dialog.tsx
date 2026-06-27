@@ -19,7 +19,7 @@ import { CloudinaryImageUpload } from "@/components/ui/cloudinary-image-upload"
 import { SavedExerciseSelect } from "@/components/trainer/saved-exercise-select"
 import { Plus, Trash2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { Routine, Exercise } from "@/lib/data"
+import type { Routine } from "@/lib/data"
 import { getDocumentId } from "@/lib/assignment/ref-id"
 
 interface EditRoutineDialogProps {
@@ -29,11 +29,14 @@ interface EditRoutineDialogProps {
   onUpdated?: () => void
 }
 
-interface ExerciseForm extends Exercise {
+interface ExerciseForm {
+  id: string
+  name: string
   sets: number
   reps: string
   rest: string
   instructions: string
+  image: string
   images: string[]
   exerciseRefId?: string
 }
@@ -98,6 +101,7 @@ function normalizeExercisesForForm(raw: unknown): ExerciseForm[] {
       rest: String(entry.rest ?? nested?.rest ?? ""),
       instructions: String(entry.instructions ?? nested?.instructions ?? ""),
       images,
+      image: images[0] || String(nested?.image || entry.image || ""),
     }
   })
 }
@@ -134,6 +138,7 @@ function EditRoutineForm({
         reps: "",
         rest: "",
         instructions: "",
+        image: "",
         images: [],
       },
     ])
@@ -174,6 +179,7 @@ function EditRoutineForm({
           rest: saved.rest,
           instructions: saved.instructions,
           images: saved.images,
+          image: saved.images[0] || "",
         }
       }),
     )

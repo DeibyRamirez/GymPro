@@ -1,5 +1,6 @@
 export interface Routine {
   _id?: string
+  id?: string
   name: string
   description: string
   duration: string

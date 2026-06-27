@@ -17,6 +17,15 @@ type DayCompleteBody = {
   note?: string
 }
 
+type DayCompletionEntry = {
+  dateKey?: string
+  workoutCompleted?: boolean
+  nutritionCompleted?: boolean
+  dayCompleted?: boolean
+  completedAt?: Date | null
+  note?: string | null
+}
+
 function getAssignmentEnd(start: Date, durationWeeks?: number, endDate?: Date | null): Date {
   if (endDate) return new Date(endDate)
   const end = new Date(start)
@@ -78,7 +87,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     const { isRestDay, hasMealPlan } = resolveDayContext(assignment, dateKey)
-    const existing = assignment.dayCompletions?.find((item) => item.dateKey === dateKey)
+    const existing = assignment.dayCompletions?.find(
+      (item: DayCompletionEntry) => item.dateKey === dateKey,
+    )
 
     let workoutCompleted = existing?.workoutCompleted ?? false
     let nutritionCompleted = existing?.nutritionCompleted ?? false
@@ -104,7 +115,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     assignment.dayCompletions = assignment.dayCompletions || []
-    const index = assignment.dayCompletions.findIndex((item) => item.dateKey === dateKey)
+    const index = assignment.dayCompletions.findIndex(
+      (item: DayCompletionEntry) => item.dateKey === dateKey,
+    )
     if (index >= 0) {
       assignment.dayCompletions[index] = nextEntry
     } else {

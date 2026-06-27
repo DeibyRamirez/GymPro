@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       if (gymIdParam) {
         gymId = gymIdParam
       } else if (gymSlug) {
-        const gym = await Gym.findOne({ slug: gymSlug }).select('_id').lean()
+        const gym = await Gym.findOne({ slug: gymSlug }).select('_id').lean<{ _id: unknown }>()
         if (!gym) {
           return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 })
         }

@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { ArrowLeft, CalendarCheck2, Dumbbell, LayoutDashboard, Loader2, Scale, Sparkles, Trophy, UserCircle2 } from 'lucide-react'
+import { ArrowLeft, CalendarCheck2, Dumbbell, LayoutDashboard, Loader2, Scale, Sparkles, Trophy, UserCircle2, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 type ClientProfile = {
@@ -34,7 +34,7 @@ interface ClientDetailViewProps {
   clientId: string
 }
 
-function StatPill({ icon: Icon, label, value, accent }: { icon: React.ElementType; label: string; value: string | number; accent: string }) {
+function StatPill({ icon: Icon, label, value, accent }: { icon: LucideIcon; label: string; value: string | number; accent: string }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border bg-card/60 px-4 py-3 backdrop-blur-sm">
       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${accent}`}>
@@ -48,7 +48,7 @@ function StatPill({ icon: Icon, label, value, accent }: { icon: React.ElementTyp
   )
 }
 
-function SectionHeader({ title, description, icon: Icon }: { title: string; description: string; icon?: React.ElementType }) {
+function SectionHeader({ title, description, icon: Icon }: { title: string; description: string; icon?: LucideIcon }) {
   return (
     <div>
       <div className="flex items-center gap-2">

@@ -38,6 +38,14 @@ type RoutineDoc = {
   }>
 }
 
+type WeeklyScheduleItem = {
+  dayOfWeek: number
+  isRestDay?: boolean
+  routineId?: unknown
+  title?: string
+  notes?: string
+}
+
 // Definición de los filtros que se pueden aplicar al obtener las asignaciones
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -110,7 +118,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       if (id) scheduleRoutineIds.add(id);
     };
 
-    for (const item of assignment.weeklySchedule || []) {
+    for (const item of (assignment.weeklySchedule || []) as WeeklyScheduleItem[]) {
       registerRoutineRef(item.routineId);
     }
     registerRoutineRef(assignment.routineId);
@@ -131,7 +139,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       routineById.set(id, doc);
     }
 
-    const resolveDayRoutine = (scheduleItem: { routineId?: unknown; isRestDay?: boolean } | undefined) => {
+    const resolveDayRoutine = (scheduleItem: WeeklyScheduleItem | undefined) => {
       if (!scheduleItem || scheduleItem.isRestDay) return null;
       const rid = extractRefId(scheduleItem.routineId) || primaryRoutineId;
       return rid ? routineById.get(rid) || null : null;
@@ -143,7 +151,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
       const dateKey = toDateKey(date);
       const weekday = date.getDay();
-      const scheduleItem = assignment.weeklySchedule?.find((item: { dayOfWeek: number; }) => item.dayOfWeek === weekday);
+      const scheduleItem = (assignment.weeklySchedule as WeeklyScheduleItem[] | undefined)?.find(
+        (item) => item.dayOfWeek === weekday,
+      );
       const isRestDay = scheduleItem?.isRestDay ?? !scheduleItem?.routineId;
       const eventType = getEventType(isRestDay);
       const dayCompletion = completionMap.get(dateKey) || null;

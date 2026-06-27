@@ -11,6 +11,8 @@ type MealPlanLike = {
   sourceMealPlanId?: unknown
 }
 
+export type { MealPlanLike }
+
 /** Filtro MongoDB para listar solo plantillas (no clones de asignación). */
 export function buildMealPlanTemplateFilter(): FilterQuery<unknown> {
   return {
