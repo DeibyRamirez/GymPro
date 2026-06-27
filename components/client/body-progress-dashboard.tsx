@@ -1,15 +1,15 @@
 "use client"
 
-import dynamic from "next/dynamic"
-import { useEffect, useState } from "react"
+import { BodyProgressCharts } from "@/components/client/body-progress-charts"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { BodyProgressCharts } from "@/components/client/body-progress-charts"
 import { ArrowLeft, Award, Loader2, PlusCircle, Scale, TrendingUp } from "lucide-react"
+import dynamic from "next/dynamic"
+import { useEffect, useState } from "react"
 
 const BodyModelViewer = dynamic(
   () => import("@/components/client/body-model-viewer").then((mod) => mod.BodyModelViewer),
@@ -173,105 +173,115 @@ export function BodyProgressView({ userId, canEdit = true, gender }: BodyProgres
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_220px]">
+      <div className="grid gap-4 xl:grid-cols-1">
         <Card className="overflow-hidden shadow-sm">
           <CardContent className="p-4">
-            <div className="grid min-h-[420px] gap-4 lg:grid-cols-2">
-              <BodyModelViewer model={modelType} />
+            <div className="grid items-stretch gap-4 lg:grid-cols-2">
+              <BodyModelViewer model={modelType} className="h-full" />
               <BodyProgressCharts measurements={measurements} />
             </div>
           </CardContent>
         </Card>
-
-        <Card className="shadow-sm xl:max-w-[220px]">
-          <CardHeader className="space-y-1 px-4 pb-2 pt-4">
-            <CardTitle className="text-base">Logros</CardTitle>
-            <CardDescription className="text-xs leading-snug">
-              Medallas según tu progreso.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="max-h-[420px] space-y-2 overflow-y-auto px-3 pb-4">
-            {achievements.map((achievement) => (
-              <div key={achievement.id} className="rounded-lg border bg-muted/20 p-2.5">
-                <div className="flex items-start gap-2">
-                  <Award
-                    className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${achievement.unlocked ? "text-sky-600" : "text-muted-foreground"}`}
-                  />
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs font-semibold leading-tight">{achievement.title}</span>
-                      <Badge
-                        variant={achievement.unlocked ? "default" : "outline"}
-                        className="h-5 px-1.5 text-[10px]"
-                      >
-                        {achievement.unlocked ? "Activo" : "Pendiente"}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] leading-snug text-muted-foreground">{achievement.description}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </div>
 
-      {canEdit && (
-        <Card className="shadow-sm">
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <Card className={`shadow-sm ${canEdit ? "" : "lg:col-span-2"}`}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <PlusCircle className="h-4 w-4" />
-              Nuevo registro antropométrico
+              <Award className="h-4 w-4 text-sky-600" />
+              Logros
             </CardTitle>
-            <CardDescription>Guarda peso, grasa corporal y perímetros por fecha.</CardDescription>
+            <CardDescription>Medallas según tu progreso.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <Label htmlFor="date">Fecha</Label>
-                <Input id="date" type="date" value={form.date} onChange={(e) => setForm((c) => ({ ...c, date: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="weight">Peso (kg)</Label>
-                <Input id="weight" type="number" step="0.1" value={form.weight} onChange={(e) => setForm((c) => ({ ...c, weight: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bodyFat">% Grasa</Label>
-                <Input id="bodyFat" type="number" step="0.1" value={form.bodyFat} onChange={(e) => setForm((c) => ({ ...c, bodyFat: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="waist">Cintura (cm)</Label>
-                <Input id="waist" type="number" step="0.1" value={form.waist} onChange={(e) => setForm((c) => ({ ...c, waist: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="chest">Pecho (cm)</Label>
-                <Input id="chest" type="number" step="0.1" value={form.chest} onChange={(e) => setForm((c) => ({ ...c, chest: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hips">Cadera (cm)</Label>
-                <Input id="hips" type="number" step="0.1" value={form.hips} onChange={(e) => setForm((c) => ({ ...c, hips: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="arm">Brazo (cm)</Label>
-                <Input id="arm" type="number" step="0.1" value={form.arm} onChange={(e) => setForm((c) => ({ ...c, arm: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="thigh">Muslo (cm)</Label>
-                <Input id="thigh" type="number" step="0.1" value={form.thigh} onChange={(e) => setForm((c) => ({ ...c, thigh: e.target.value }))} />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="notes">Observaciones</Label>
-                <Textarea id="notes" value={form.notes} onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))} />
-              </div>
-              <div className="flex justify-end md:col-span-2">
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Guardando..." : "Guardar progreso"}
-                </Button>
-              </div>
-            </form>
+          <CardContent className="max-h-[520px] space-y-2 overflow-y-auto">
+            {achievements.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aún no hay logros registrados.</p>
+            ) : (
+              achievements.map((achievement) => (
+                <div key={achievement.id} className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex items-start gap-2.5">
+                    <Award
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${achievement.unlocked ? "text-sky-600" : "text-muted-foreground"}`}
+                    />
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold leading-tight">{achievement.title}</span>
+                        <Badge variant={achievement.unlocked ? "default" : "outline"} className="text-xs">
+                          {achievement.unlocked ? "Activo" : "Pendiente"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm leading-snug text-muted-foreground">{achievement.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
-      )}
+
+        {canEdit && (
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <PlusCircle className="h-4 w-4" />
+                Registro antropométrico
+              </CardTitle>
+              <CardDescription>Guarda peso, grasa corporal y perímetros por fecha.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="date">Fecha</Label>
+                  <Input id="date" type="date" value={form.date} onChange={(e) => setForm((c) => ({ ...c, date: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weight">Peso (kg)</Label>
+                  <Input id="weight" type="number" step="0.1" value={form.weight} onChange={(e) => setForm((c) => ({ ...c, weight: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bodyFat">% Grasa</Label>
+                  <Input id="bodyFat" type="number" step="0.1" value={form.bodyFat} onChange={(e) => setForm((c) => ({ ...c, bodyFat: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="waist">Cintura (cm)</Label>
+                  <Input id="waist" type="number" step="0.1" value={form.waist} onChange={(e) => setForm((c) => ({ ...c, waist: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="chest">Pecho (cm)</Label>
+                  <Input id="chest" type="number" step="0.1" value={form.chest} onChange={(e) => setForm((c) => ({ ...c, chest: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hips">Cadera (cm)</Label>
+                  <Input id="hips" type="number" step="0.1" value={form.hips} onChange={(e) => setForm((c) => ({ ...c, hips: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="arm">Brazo (cm)</Label>
+                  <Input id="arm" type="number" step="0.1" value={form.arm} onChange={(e) => setForm((c) => ({ ...c, arm: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="thigh">Muslo (cm)</Label>
+                  <Input id="thigh" type="number" step="0.1" value={form.thigh} onChange={(e) => setForm((c) => ({ ...c, thigh: e.target.value }))} />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="notes">Observaciones</Label>
+                  <Textarea id="notes" value={form.notes} onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))} />
+                </div>
+                <div className="flex justify-end sm:col-span-2">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? "Guardando..." : "Guardar progreso"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+
+
+
+
+
     </div>
   )
 }

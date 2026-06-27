@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const assignment = await Assignment.findById(id)
       .populate('clientId', 'name email avatar role trainerId')
       .populate('trainerId', 'name email avatar role')
-      .populate({ path: 'routineId', select: 'name description duration difficulty exercises tags createdBy isTemplate sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment instructions sets reps rest difficulty isTemplate sourceExerciseId' } })
+      .populate({ path: 'routineId', select: 'name description duration difficulty exercises tags createdBy isTemplate sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image images muscleGroups equipment instructions sets reps rest difficulty isTemplate sourceExerciseId' } })
       .populate('mealPlanId', 'name description calories duration meals');
 
     if (!assignment) return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 });

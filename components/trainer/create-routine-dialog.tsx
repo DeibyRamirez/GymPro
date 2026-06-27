@@ -15,7 +15,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
-import { Plus, Trash2, ImageIcon } from "lucide-react"
+import { CloudinaryImageUpload } from "@/components/ui/cloudinary-image-upload"
+import { SavedExerciseSelect } from "@/components/trainer/saved-exercise-select"
+import { Plus, Trash2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface CreateRoutineDialogProps {
@@ -26,12 +28,13 @@ interface CreateRoutineDialogProps {
 
 interface ExerciseForm {
   id: string
+  exerciseRefId?: string
   name: string
   sets: string
   reps: string
   rest: string
   instructions: string
-  image: string
+  images: string[]
   muscleGroups?: string[]
 }
 
@@ -49,7 +52,7 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
       reps: "",
       rest: "",
       instructions: "",
-      image: "",
+      images: [],
     },
   ])
 
@@ -63,7 +66,7 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
         reps: "",
         rest: "",
         instructions: "",
-        image: "",
+        images: [],
       },
     ])
   }
@@ -72,8 +75,37 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
     setExercises(exercises.filter((ex) => ex.id !== id))
   }
 
-  const updateExercise = (id: string, field: keyof ExerciseForm, value: string) => {
+  const updateExercise = (id: string, field: keyof ExerciseForm, value: string | string[]) => {
     setExercises(exercises.map((ex) => (ex.id === id ? { ...ex, [field]: value } : ex)))
+  }
+
+  const applySavedExercise = (rowId: string, saved: {
+    id: string
+    name: string
+    sets: number
+    reps: string
+    rest: string
+    instructions: string
+    images: string[]
+  } | null) => {
+    setExercises((current) =>
+      current.map((exercise) => {
+        if (exercise.id !== rowId) return exercise
+        if (!saved) {
+          return { ...exercise, exerciseRefId: undefined }
+        }
+        return {
+          ...exercise,
+          exerciseRefId: saved.id,
+          name: saved.name,
+          sets: String(saved.sets),
+          reps: saved.reps,
+          rest: saved.rest,
+          instructions: saved.instructions,
+          images: saved.images,
+        }
+      }),
+    )
   }
 
   const handleCreate = async () => {
@@ -100,12 +132,14 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
       difficulty,
       trainingDaysPerWeek: Number(trainingDaysPerWeek),
       exercises: exercises.map(ex => ({
+        ...(ex.exerciseRefId ? { exercise: ex.exerciseRefId } : {}),
         name: ex.name.trim(),
         sets: ex.sets.trim(),
         reps: ex.reps.trim(),
         rest: ex.rest.trim(),
         instructions: ex.instructions.trim(),
-        image: ex.image?.trim() || "",
+        images: ex.images,
+        image: ex.images[0] || "",
         muscleGroups: ex.muscleGroups || ['legs'],
       })),
       tags: []
@@ -234,6 +268,11 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
                       )}
                     </div>
 
+                    <SavedExerciseSelect
+                      value={exercise.exerciseRefId}
+                      onSelect={(saved) => applySavedExercise(exercise.id, saved)}
+                    />
+
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Nombre del Ejercicio</Label>
@@ -244,18 +283,13 @@ export function CreateRoutineDialog({ open, onOpenChange, onSuccess }: CreateRou
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>URL de Imagen</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="/ruta-imagen.jpg"
-                            value={exercise.image}
-                            onChange={(e) => updateExercise(exercise.id, "image", e.target.value)}
-                          />
-                          <Button type="button" variant="outline" size="icon">
-                            <ImageIcon className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <CloudinaryImageUpload
+                          label="Imágenes del ejercicio"
+                          value={exercise.images}
+                          onChange={(images) => updateExercise(exercise.id, "images", images)}
+                          folder="gympro/exercises"
+                        />
                       </div>
                     </div>
 

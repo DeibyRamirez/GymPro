@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import type { MealPlan } from "@/lib/data"
-import { Apple, Copy, Edit, Eye, Flame, Plus, Search, UtensilsCrossed } from "lucide-react"
+import { Apple, Edit, Eye, Flame, Plus, Search, UtensilsCrossed } from "lucide-react"
 import { useEffect, useState } from "react"
 import { CreateMealPlanDialog } from "./create-meal-plan-dialog"
 import { EditMealPlanDialog } from "./edit-meal-plan-dialog"
@@ -140,7 +140,7 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
                 </div>
               </div>
 
-              {/* Botones de acción */}
+              {/* Ver / editar — sin duplicar planes */}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -165,9 +165,6 @@ export function MealPlansLibrary({ trainerId }: MealPlansLibraryProps) {
                 >
                   <Edit className="h-4 w-4" />
                   Editar
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => console.log("Duplicar", plan.id)}>
-                  <Copy className="h-4 w-4" />
                 </Button>
 
               </div>

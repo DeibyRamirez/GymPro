@@ -8,6 +8,7 @@ export interface IExercise extends Document {
   reps: string;
   rest: string;
   image: string;
+  images: string[];
   instructions: string;
   muscleGroups: string[];
   equipment: string[];
@@ -45,6 +46,14 @@ const ExerciseSchema = new Schema<IExercise>({
   image: {
     type: String,
     default: '/default-exercise.png'
+  },
+  images: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: (items: string[]) => items.length <= 4,
+      message: 'Máximo 4 imágenes por ejercicio',
+    },
   },
   instructions: {
     type: String,

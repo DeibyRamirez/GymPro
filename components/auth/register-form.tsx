@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import type { User } from "@/lib/auth"
@@ -177,7 +178,7 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
           </div>
           <div>
             <CardTitle className="text-3xl font-bold text-balance">Crear Cuenta</CardTitle>
-            <CardDescription className="text-base mt-2">Únete a FitPro Manager</CardDescription>
+            <CardDescription className="text-base mt-2">Únete a {gymSlug?.toUpperCase() || "FitPro Manager"}</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -345,9 +346,8 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
 
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -357,9 +357,8 @@ export function RegisterForm({ onRegister, onSwitchToLogin, redirectTo = '/app',
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-              <Input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

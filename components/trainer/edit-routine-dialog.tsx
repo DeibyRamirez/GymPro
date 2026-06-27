@@ -15,7 +15,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
-import { Plus, Trash2, ImageIcon } from "lucide-react"
+import { CloudinaryImageUpload } from "@/components/ui/cloudinary-image-upload"
+import { SavedExerciseSelect } from "@/components/trainer/saved-exercise-select"
+import { Plus, Trash2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { Routine, Exercise } from "@/lib/data"
 import { getDocumentId } from "@/lib/assignment/ref-id"
@@ -32,7 +34,23 @@ interface ExerciseForm extends Exercise {
   reps: string
   rest: string
   instructions: string
-  image: string
+  images: string[]
+  exerciseRefId?: string
+}
+
+function resolveExerciseRefId(entry: {
+  exercise?: string | { _id?: string; id?: string }
+  _id?: string
+  id?: string
+}, nested?: { _id?: string; id?: string }) {
+  if (nested?._id) return String(nested._id)
+  if (nested?.id) return String(nested.id)
+  if (typeof entry.exercise === "string") return entry.exercise
+  if (entry.exercise && typeof entry.exercise === "object") {
+    if (entry.exercise._id) return String(entry.exercise._id)
+    if (entry.exercise.id) return String(entry.exercise.id)
+  }
+  return undefined
 }
 
 function normalizeExercisesForForm(raw: unknown): ExerciseForm[] {
@@ -48,6 +66,7 @@ function normalizeExercisesForForm(raw: unknown): ExerciseForm[] {
       rest?: string
       instructions?: string
       image?: string
+      images?: string[]
       exercise?: {
         _id?: string
         id?: string
@@ -57,18 +76,28 @@ function normalizeExercisesForForm(raw: unknown): ExerciseForm[] {
         rest?: string
         instructions?: string
         image?: string
+        images?: string[]
       }
     }
 
     const nested = entry.exercise
+    const images = Array.isArray(nested?.images)
+      ? nested.images
+      : Array.isArray(entry.images)
+        ? entry.images
+        : nested?.image || entry.image
+          ? [String(nested?.image || entry.image)]
+          : []
+
     return {
       id: entry.id || entry._id || nested?.id || nested?._id || String(index),
+      exerciseRefId: resolveExerciseRefId(entry, nested),
       name: nested?.name || entry.name || "",
       sets: Number(entry.sets ?? nested?.sets ?? 0),
       reps: String(entry.reps ?? nested?.reps ?? ""),
       rest: String(entry.rest ?? nested?.rest ?? ""),
       instructions: String(entry.instructions ?? nested?.instructions ?? ""),
-      image: String(nested?.image || entry.image || ""),
+      images,
     }
   })
 }
@@ -105,7 +134,7 @@ function EditRoutineForm({
         reps: "",
         rest: "",
         instructions: "",
-        image: "",
+        images: [],
       },
     ])
   }
@@ -114,8 +143,40 @@ function EditRoutineForm({
     setExercises(exercises.filter((ex) => ex.id !== id))
   }
 
-  const updateExercise = (id: string, field: keyof ExerciseForm, value: string | number) => {
+  const updateExercise = (id: string, field: keyof ExerciseForm, value: string | number | string[]) => {
     setExercises(exercises.map((ex) => (ex.id === id ? { ...ex, [field]: value } : ex)))
+  }
+
+  const applySavedExercise = (
+    rowId: string,
+    saved: {
+      id: string
+      name: string
+      sets: number
+      reps: string
+      rest: string
+      instructions: string
+      images: string[]
+    } | null,
+  ) => {
+    setExercises((current) =>
+      current.map((exercise) => {
+        if (exercise.id !== rowId) return exercise
+        if (!saved) {
+          return { ...exercise, exerciseRefId: undefined }
+        }
+        return {
+          ...exercise,
+          exerciseRefId: saved.id,
+          name: saved.name,
+          sets: saved.sets,
+          reps: saved.reps,
+          rest: saved.rest,
+          instructions: saved.instructions,
+          images: saved.images,
+        }
+      }),
+    )
   }
 
   const handleApiError = async (res: Response) => {
@@ -145,12 +206,14 @@ function EditRoutineForm({
         difficulty,
         trainingDaysPerWeek: Number(trainingDaysPerWeek),
         exercises: exercises.map((ex) => ({
+          ...(ex.exerciseRefId ? { exercise: ex.exerciseRefId } : {}),
           name: ex.name,
           sets: ex.sets,
           reps: ex.reps,
           rest: ex.rest,
           instructions: ex.instructions,
-          image: ex.image,
+          images: ex.images,
+          image: ex.images[0] || "",
         })),
       }
 
@@ -295,6 +358,11 @@ function EditRoutineForm({
                       </Button>
                     </div>
 
+                    <SavedExerciseSelect
+                      value={exercise.exerciseRefId}
+                      onSelect={(saved) => applySavedExercise(exercise.id, saved)}
+                    />
+
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label>Nombre del Ejercicio</Label>
@@ -304,17 +372,13 @@ function EditRoutineForm({
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label>URL de Imagen</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={exercise.image}
-                            onChange={(e) => updateExercise(exercise.id, "image", e.target.value)}
-                          />
-                          <Button type="button" variant="outline" size="icon">
-                            <ImageIcon className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <CloudinaryImageUpload
+                          label="Imágenes del ejercicio"
+                          value={exercise.images}
+                          onChange={(images) => updateExercise(exercise.id, "images", images)}
+                          folder="gympro/exercises"
+                        />
                       </div>
                     </div>
 

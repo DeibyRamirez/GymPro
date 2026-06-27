@@ -1,10 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, CheckCircle2, Clock, TrendingUp } from "lucide-react"
+import { useMemo, useState } from "react"
 import { ExerciseCard } from "./exercise-card"
-import { ArrowLeft, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
 
 type RoutineProgressEntry = {
   routineId: string
@@ -28,6 +28,7 @@ type AssignedRoutine = {
       _id: string
       name: string
       image?: string
+      images?: string[]
       instructions?: string
     }
     sets: number
@@ -143,14 +144,15 @@ export function RoutineDetailView({ routine, workoutDate, onBack }: RoutineDetai
         <div className="grid gap-6 md:grid-cols-2">
           {routine.exercises.map((exercise, index) => (
             <div key={exercise._id || exercise.exercise._id} className="space-y-3">
-                <ExerciseCard
-                  exercise={{
-                    id: exercise.exercise._id,
+              <ExerciseCard
+                exercise={{
+                  id: exercise.exercise._id,
                   name: exercise.exercise.name,
                   sets: exercise.sets,
                   reps: exercise.reps,
                   rest: exercise.rest,
                   image: exercise.exercise.image || "/placeholder.svg",
+                  images: exercise.exercise.images,
                   instructions: exercise.instructions || exercise.exercise.instructions || "",
                 }}
                 index={index}

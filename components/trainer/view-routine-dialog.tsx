@@ -66,7 +66,7 @@ export function ViewRoutineDialog({ open, onOpenChange, routine }: ViewRoutineDi
                   <div className="flex-shrink-0">
                     <div className="w-32 h-32 relative rounded-lg overflow-hidden bg-muted">
                       <Image
-                        src={exercise.image || "/placeholder.svg"}
+                        src={(exercise.images?.[0] || exercise.image) || "/placeholder.svg"}
                         alt={exercise.name}
                         fill
                         className="object-cover"

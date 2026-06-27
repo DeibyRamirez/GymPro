@@ -6,6 +6,7 @@ import Product from '@/lib/models/Product';
 import Gym from '@/lib/models/Gym';
 import { buildPagination, parsePagination } from '@/lib/pagination';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
+import { normalizeImages, primaryImage } from '@/lib/images/constants';
 
 
 
@@ -38,7 +39,8 @@ export async function GET(req: NextRequest) {
         price: product.price,
         stock: product.stock,
         lowStockThreshold: product.lowStockThreshold,
-        image: product.image,
+        image: primaryImage(product.images, product.image),
+        images: normalizeImages(product.images, product.image),
         lowStock: product.stock <= product.lowStockThreshold,
       })),
       pagination: buildPagination(page, limit, total),
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
     // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios 
     // encontrar gimnasios relevantes de manera rápida y eficiente, mejorando así la experiencia de navegación y facilitando la
     // conexión entre los clientes y los gimnasios que mejor se adapten a sus necesidades e intereses.
-    const { name, description, category, price, stock, lowStockThreshold, image } = body;
+    const { name, description, category, price, stock, lowStockThreshold, image, images } = body;
     logApiRequest('/api/products POST', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, gymSlug: body.gymSlug || null, name, category, price, stock });
     if (!name || !description || !category || price === undefined || stock === undefined) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
@@ -77,6 +79,8 @@ export async function POST(req: NextRequest) {
     // El filtro de búsqueda se aplica a los campos name, location y description del gimnasio, permitiendo a los usuarios 
     // encontrar gimnasios relevantes de manera rápida y eficiente, mejorando así la experiencia de navegación y facilitando la
     // conexión entre los clientes y los gimnasios que mejor se adapten a sus necesidades e intereses.
+    const productImages = normalizeImages(images, image);
+
     const product = await Product.create({
       name,
       description,
@@ -84,7 +88,8 @@ export async function POST(req: NextRequest) {
       price,
       stock,
       lowStockThreshold: lowStockThreshold ?? 5,
-      image,
+      images: productImages,
+      image: primaryImage(productImages, image),
       gymId,
     });
 

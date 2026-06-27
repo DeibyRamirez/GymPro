@@ -60,7 +60,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     // o entrenador ver la información detallada de la asignación, 
     // y proyectar el calendario correspondiente con los eventos programados para cada día dentro del período de la asignación.
     const assignment = await Assignment.findById(id)
-      .populate({ path: 'routineId', select: 'name description duration difficulty exercises trainingDaysPerWeek', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment' } })
+      .populate({ path: 'routineId', select: 'name description duration difficulty exercises trainingDaysPerWeek', populate: { path: 'exercises.exercise', select: 'name image images muscleGroups equipment' } })
       .populate('mealPlanId', 'name description calories duration meals');
 
     // Validar que la asignación exista, que pertenezca al mismo gimnasio que el usuario autenticado, 

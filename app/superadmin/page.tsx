@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { User } from "@/lib/auth"
 import { ArrowRight, Crown, Dumbbell, LayoutDashboard, Plus, ShieldCheck, Users, Warehouse } from "lucide-react"
@@ -118,7 +119,7 @@ export default function SuperAdminPage() {
                 <Input placeholder="Ubicación" value={gymLocation} onChange={(e) => setGymLocation(e.target.value)} />
                 <Input placeholder="Correo del gimnasio" value={gymEmail} onChange={(e) => setGymEmail(e.target.value)} />
                 <Input placeholder="Correo admin" value={gymAdminEmail} onChange={(e) => setGymAdminEmail(e.target.value)} />
-                <Input placeholder="Password admin" type="password" value={gymAdminPassword} onChange={(e) => setGymAdminPassword(e.target.value)} />
+                <PasswordInput placeholder="Password admin" value={gymAdminPassword} onChange={(e) => setGymAdminPassword(e.target.value)} />
                 <Button className="md:col-span-2" onClick={createGym}><Plus className="mr-2 h-4 w-4" /> Crear gimnasio</Button>
               </CardContent>
             </Card>

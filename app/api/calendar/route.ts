@@ -247,7 +247,7 @@ export async function POST(req: NextRequest) {
       .populate('trainerId', 'name email')
       .populate('invitedUserIds', 'name email')
       .populate('confirmedUserIds', 'name email')
-      .populate({ path: 'routineId', populate: { path: 'exercises.exercise', select: 'name image muscleGroups equipment' } })
+      .populate({ path: 'routineId', populate: { path: 'exercises.exercise', select: 'name image images muscleGroups equipment' } })
       .populate('mealPlanId', 'name description');
 
     if (!createdEvent) {

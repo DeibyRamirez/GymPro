@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb';
 import Routine from '@/lib/models/Routine';
 import Exercise from '@/lib/models/Exercise';
 import { buildPagination, parsePagination } from '@/lib/pagination';
+import { normalizeImages, primaryImage } from '@/lib/images/constants';
 
 
 type JwtPayload = { userId: string }
@@ -16,6 +17,8 @@ type ExerciseInput = {
   rest: string
   instructions: string
   image?: string
+  images?: string[]
+  exercise?: string
   muscleGroups?: string[]
 }
 
@@ -81,7 +84,7 @@ export async function GET(req: NextRequest) {
     const [routines, total] = await Promise.all([
       Routine.find(filters)
         .populate('createdBy', 'name email')
-        .populate('exercises.exercise', 'name image muscleGroups equipment')
+        .populate('exercises.exercise', 'name image images muscleGroups equipment')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -146,19 +149,46 @@ export async function POST(req: NextRequest) {
     // Procesar cada ejercicio: buscar o crear
     const processedExercises = await Promise.all(
       rawExercises.map(async (ex: ExerciseInput, index: number) => {
-        const { name: exName, sets, reps, rest, instructions, image } = ex;
+        const { name: exName, sets, reps, rest, instructions, image, images, exercise: exerciseRef } = ex;
 
         if (!exName || !sets || !reps || !rest || !instructions) {
           throw new Error(`Faltan datos en el ejercicio ${index + 1}`);
         }
 
-        // Convertir sets a número (si es rango como "8-12", toma el primero)
         const setsNumber = (() => {
           const num = typeof sets === 'number' ? sets : parseInt(sets, 10);
-          return isNaN(num) ? 3 : num; // default 3 si no es número
+          return isNaN(num) ? 3 : num;
         })();
 
-        // Buscar ejercicio por nombre (case insensitive)
+        const exerciseImages = normalizeImages(images, image);
+
+        if (exerciseRef) {
+          const linkedExercise = await Exercise.findOne({
+            _id: exerciseRef,
+            createdBy: user._id,
+            ...(user.gymId ? { gymId: user.gymId } : { gymId: null }),
+          });
+
+          if (!linkedExercise) {
+            throw new Error(`El ejercicio seleccionado en la posición ${index + 1} no existe`);
+          }
+
+          if (exerciseImages.length > 0) {
+            linkedExercise.images = exerciseImages;
+            linkedExercise.image = primaryImage(exerciseImages, linkedExercise.image, '/default-exercise.png');
+            await linkedExercise.save();
+          }
+
+          return {
+            exercise: linkedExercise._id,
+            sets: setsNumber,
+            reps: String(reps).trim(),
+            rest: String(rest).trim(),
+            instructions: instructions.trim(),
+            order: index + 1,
+          };
+        }
+
         let exercise = await Exercise.findOne({
           name: { $regex: `^${exName}$`, $options: 'i' },
           createdBy: user._id // opcional: solo del usuario
@@ -171,7 +201,8 @@ export async function POST(req: NextRequest) {
             sets: setsNumber,
             reps: reps.trim(),
             rest: rest.trim(),
-            image: image?.trim() || '/default-exercise.png',
+            images: exerciseImages,
+            image: primaryImage(exerciseImages, undefined, '/default-exercise.png'),
             instructions: instructions.trim(),
             muscleGroups: ex.muscleGroups || ['legs'],
             equipment: [],
@@ -179,6 +210,10 @@ export async function POST(req: NextRequest) {
             createdBy: user._id
           });
 
+          await exercise.save();
+        } else if (exerciseImages.length > 0) {
+          exercise.images = exerciseImages;
+          exercise.image = primaryImage(exerciseImages, exercise.image, '/default-exercise.png');
           await exercise.save();
         }
 
@@ -223,7 +258,7 @@ export async function POST(req: NextRequest) {
     // Poblar para respuesta
     const populatedRoutine = await Routine.findById(routine._id)
       .populate('createdBy', 'name email')
-      .populate('exercises.exercise', 'name image muscleGroups equipment instructions');
+      .populate('exercises.exercise', 'name image images muscleGroups equipment instructions');
 
     return NextResponse.json(
       {

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
+import { CloudinaryImageUpload } from "@/components/ui/cloudinary-image-upload"
 import { Plus, Trash2, Flame } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -32,6 +33,7 @@ interface MealForm {
   protein: string
   carbs: string
   fats: string
+  images: string[]
 }
 
 export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMealPlanDialogProps) {
@@ -49,6 +51,7 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
       protein: "",
       carbs: "",
       fats: "",
+      images: [],
     },
   ])
 
@@ -70,6 +73,7 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
           protein: "",
           carbs: "",
           fats: "",
+          images: [],
         },
       ])
   }
@@ -78,7 +82,7 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
     setMeals(meals.filter((meal) => meal.id !== id))
   }
 
-  const updateMeal = (id: string, field: keyof MealForm, value: string) => {
+  const updateMeal = (id: string, field: keyof MealForm, value: string | string[]) => {
     setMeals(meals.map((meal) => (meal.id === id ? { ...meal, [field]: value } : meal)))
   }
 
@@ -103,6 +107,7 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
           carbs: parseInt(m.carbs) || 0,
           fats: parseInt(m.fats) || 0,
         },
+        images: m.images,
       })),
       tags: []
     }
@@ -126,7 +131,7 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
       setDescription("")
       setTotalCalories("")
       setGoal("mantenimiento")
-      setMeals([{ id: "1", name: "", time: "", foods: "", calories: "", protein: "", carbs: "", fats: "" }])
+      setMeals([{ id: "1", name: "", time: "", foods: "", calories: "", protein: "", carbs: "", fats: "", images: [] }])
       if (onSuccess) onSuccess()
       // window.location.reload()
     } catch (err: unknown) {
@@ -264,6 +269,13 @@ export function CreateMealPlanDialog({ open, onOpenChange, onSuccess }: CreateMe
                         <Input type="number" placeholder="12" value={meal.fats} onChange={(e) => updateMeal(meal.id, "fats", e.target.value)} />
                       </div>
                     </div>
+
+                    <CloudinaryImageUpload
+                      label="Imágenes de la comida"
+                      value={meal.images}
+                      onChange={(images) => updateMeal(meal.id, "images", images)}
+                      folder="gympro/meals"
+                    />
 
                     <div className="space-y-2">
                       <Label>Alimentos (separados por coma)</Label>

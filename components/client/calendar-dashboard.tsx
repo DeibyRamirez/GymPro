@@ -2,14 +2,14 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import type { CalendarEvent } from "@/lib/calendar-data"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { ArrowLeft, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Dumbbell, Flame, Loader2, Moon, Pencil, Sparkles, SunMedium, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -428,7 +428,7 @@ export function CalendarDashboard({ onBack, assignmentId, onOpenWorkout }: Calen
                           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-label="Día completado" />
                         )}
                       </div>
-                    <div className="mt-1 flex-1 space-y-1 overflow-hidden">
+                      <div className="mt-1 flex-1 space-y-1 overflow-hidden">
                         {dayEvents.slice(0, 2).map((event) => {
                           const config = typeMeta[event.type] || fallbackTypeMeta
                           const Icon = config.icon
@@ -518,49 +518,49 @@ export function CalendarDashboard({ onBack, assignmentId, onOpenWorkout }: Calen
 
                       {event.type === "class" ? (
                         <div className="mt-4 space-y-3">
-                        <div className="grid gap-2 text-sm sm:grid-cols-3">
-                          <div className="rounded-lg bg-muted/40 p-3">
-                            <p className="text-xs text-muted-foreground">Día</p>
-                            <p className="font-medium">{event.date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}</p>
-                          </div>
-                          <div className="rounded-lg bg-muted/40 p-3">
-                            <p className="text-xs text-muted-foreground">Hora</p>
-                            <p className="font-medium">{event.date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</p>
-                          </div>
-                          <div className="rounded-lg bg-muted/40 p-3">
-                            <p className="text-xs text-muted-foreground">Cupos</p>
-                            <p className="font-medium">{event.bookedCount || 0}/{event.capacity || 0}</p>
-                          </div>
-                        </div>
-                        {shouldShowRsvp(event) && (
-                          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-                            <p className="text-sm font-medium">¿Asistirás a este evento?</p>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                size="sm"
-                                className="min-w-[140px]"
-                                disabled={respondingId === event.id}
-                                onClick={() => handleRespond(event.id, "accept")}
-                              >
-                                {respondingId === event.id ? "Confirmando..." : "Confirmar asistencia"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={respondingId === event.id}
-                                onClick={() => handleRespond(event.id, "decline")}
-                              >
-                                Rechazar
-                              </Button>
+                          <div className="grid gap-2 text-sm sm:grid-cols-3">
+                            <div className="rounded-lg bg-muted/40 p-3">
+                              <p className="text-xs text-muted-foreground">Día</p>
+                              <p className="font-medium">{event.date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}</p>
+                            </div>
+                            <div className="rounded-lg bg-muted/40 p-3">
+                              <p className="text-xs text-muted-foreground">Hora</p>
+                              <p className="font-medium">{event.date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</p>
+                            </div>
+                            <div className="rounded-lg bg-muted/40 p-3">
+                              <p className="text-xs text-muted-foreground">Cupos</p>
+                              <p className="font-medium">{event.bookedCount || 0}/{event.capacity || 0}</p>
                             </div>
                           </div>
-                        )}
-                        {event.invitationStatus === "confirmed" && (
-                          <Badge className="bg-emerald-600 hover:bg-emerald-600">Asistencia confirmada</Badge>
-                        )}
-                        {event.invitationStatus === "declined" && (
-                          <Badge variant="outline">Invitación rechazada</Badge>
-                        )}
+                          {shouldShowRsvp(event) && (
+                            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                              <p className="text-sm font-medium">¿Asistirás a este evento?</p>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  className="min-w-[140px]"
+                                  disabled={respondingId === event.id}
+                                  onClick={() => handleRespond(event.id, "accept")}
+                                >
+                                  {respondingId === event.id ? "Confirmando..." : "Confirmar asistencia"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={respondingId === event.id}
+                                  onClick={() => handleRespond(event.id, "decline")}
+                                >
+                                  Rechazar
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {event.invitationStatus === "confirmed" && (
+                            <Badge className="bg-emerald-600 hover:bg-emerald-600">Asistencia confirmada</Badge>
+                          )}
+                          {event.invitationStatus === "declined" && (
+                            <Badge variant="outline">Invitación rechazada</Badge>
+                          )}
                         </div>
                       ) : event.type === "workout" && event.exercises?.length ? (
                         <div className="mt-4 space-y-2">
@@ -668,7 +668,7 @@ export function CalendarDashboard({ onBack, assignmentId, onOpenWorkout }: Calen
                   </div>
                 )}
 
-                {!selectedAssignmentEvent.isRestDay &&
+                {/* {!selectedAssignmentEvent.isRestDay &&
                   onOpenWorkout &&
                   selectedAssignmentEvent.exercises &&
                   selectedAssignmentEvent.exercises.length > 0 && (
@@ -679,14 +679,14 @@ export function CalendarDashboard({ onBack, assignmentId, onOpenWorkout }: Calen
                         onOpenWorkout(
                           toDateKey(selectedDate),
                           selectedAssignmentEvent.routineId
-                            || (selectedAssignmentEvent.metadata?.routineId as string | undefined),
+                          || (selectedAssignmentEvent.metadata?.routineId as string | undefined),
                         )
                       }
                     >
                       <Dumbbell className="mr-2 h-4 w-4" />
                       Ir a rutina del día
                     </Button>
-                  )}
+                  )} */}
               </div>
             )}
 

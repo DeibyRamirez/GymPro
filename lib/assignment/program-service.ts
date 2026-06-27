@@ -1,5 +1,4 @@
 import mongoose from 'mongoose'
-import Exercise from '@/lib/models/Exercise'
 import MealPlan from '@/lib/models/MealPlan'
 import Routine from '@/lib/models/Routine'
 import type { IUser } from '@/lib/models/User'
@@ -9,7 +8,7 @@ export type WeeklyScheduleInput = {
   isRestDay?: boolean
   title?: string
   notes?: string
-  /** Plantilla de rutina para este día (prioridad sobre defaultRoutineTemplateId). */
+  /** Rutina del calendario (referencia directa, sin clonar). */
   routineTemplateId?: string | null
 }
 
@@ -32,144 +31,57 @@ export type BuiltProgram = {
   }>
 }
 
-type PopulatedExercise = {
-  _id: unknown
-  name: string
-  sets: number
-  reps: string
-  rest: string
-  image: string
-  instructions: string
-  muscleGroups: string[]
-  equipment: string[]
-  difficulty: 'beginner' | 'intermediate' | 'advanced'
-}
-
-async function cloneRoutineFromTemplate(
-  templateId: string,
+async function resolveRoutineReference(
+  routineId: string,
   user: IUser,
-  gymId: mongoose.Types.ObjectId | null | undefined,
 ): Promise<string> {
-  const sourceRoutine = await Routine.findById(templateId).populate('exercises.exercise')
-  if (!sourceRoutine) {
-    throw new Error('Rutina inválida')
-  }
-  if (String(sourceRoutine.gymId || null) !== String(gymId || null)) {
+  const routine = await Routine.findOne({
+    _id: routineId,
+    isActive: true,
+    ...(user.gymId ? { gymId: user.gymId } : { gymId: null }),
+  })
+
+  if (!routine) {
     throw new Error('Rutina inválida')
   }
 
-  const sourceRoutineDoc = sourceRoutine.toObject() as {
-    _id: unknown
-    name: string
-    description: string
-    duration: string
-    difficulty: 'beginner' | 'intermediate' | 'advanced'
-    trainingDaysPerWeek?: 4 | 5 | 6
-    tags?: string[]
-    exercises: Array<{
-      exercise: PopulatedExercise
-      sets: number
-      reps: string
-      rest: string
-      instructions: string
-      order: number
-    }>
+  if (user.role === 'trainer' && routine.createdBy.toString() !== user._id.toString()) {
+    throw new Error('Rutina inválida')
   }
 
-  const clonedExercises = await Promise.all(
-    sourceRoutineDoc.exercises.map(async (item) => {
-      const sourceExercise = item.exercise
-      const clonedExercise = await Exercise.create({
-        name: sourceExercise.name,
-        sets: sourceExercise.sets,
-        reps: sourceExercise.reps,
-        rest: sourceExercise.rest,
-        image: sourceExercise.image,
-        instructions: sourceExercise.instructions,
-        muscleGroups: sourceExercise.muscleGroups,
-        equipment: sourceExercise.equipment,
-        difficulty: sourceExercise.difficulty,
-        createdBy: user._id,
-        sourceExerciseId: sourceExercise._id,
-        isTemplate: false,
-      })
-
-      return {
-        exercise: clonedExercise._id,
-        sets: item.sets,
-        reps: item.reps,
-        rest: item.rest,
-        instructions: item.instructions,
-        order: item.order,
-      }
-    }),
-  )
-
-  const clonedRoutine = await Routine.create({
-    name: sourceRoutineDoc.name,
-    description: sourceRoutineDoc.description,
-    duration: sourceRoutineDoc.duration,
-    difficulty: sourceRoutineDoc.difficulty,
-    trainingDaysPerWeek: sourceRoutineDoc.trainingDaysPerWeek || 5,
-    exercises: clonedExercises,
-    tags: sourceRoutineDoc.tags || [],
-    createdBy: user._id,
-    sourceRoutineId: sourceRoutineDoc._id,
-    isTemplate: false,
-    gymId: gymId || null,
-  })
-
-  return clonedRoutine._id.toString()
+  return routine._id.toString()
 }
 
-async function cloneMealPlanFromTemplate(
-  templateId: string,
+async function resolveMealPlanReference(
+  mealPlanId: string,
   user: IUser,
-  gymId: mongoose.Types.ObjectId | null | undefined,
 ): Promise<string> {
-  const sourceMealPlan = await MealPlan.findById(templateId)
-  if (!sourceMealPlan) {
-    throw new Error('Plan alimenticio inválido')
-  }
-  if (String(sourceMealPlan.gymId || null) !== String(gymId || null)) {
-    throw new Error('Plan alimenticio inválido')
-  }
-
-  const doc = sourceMealPlan.toObject()
-  const clonedMealPlan = await MealPlan.create({
-    name: doc.name,
-    description: doc.description,
-    calories: doc.calories,
-    meals: doc.meals,
-    duration: doc.duration,
-    tags: doc.tags || [],
-    createdBy: user._id,
-    sourceMealPlanId: sourceMealPlan._id,
-    isTemplate: false,
-    gymId: gymId || null,
+  const mealPlan = await MealPlan.findOne({
+    _id: mealPlanId,
+    isActive: true,
+    ...(user.gymId ? { gymId: user.gymId } : { gymId: null }),
   })
 
-  return clonedMealPlan._id.toString()
+  if (!mealPlan) {
+    throw new Error('Plan alimenticio inválido')
+  }
+
+  if (user.role === 'trainer' && mealPlan.createdBy.toString() !== user._id.toString()) {
+    throw new Error('Plan alimenticio inválido')
+  }
+
+  return mealPlan._id.toString()
 }
 
+/** Asigna referencias directas a rutinas y planes (sin clonar documentos). */
 export async function buildProgramFromTemplates(
   user: IUser,
   input: BuildProgramInput,
 ): Promise<BuiltProgram> {
-  const routineCloneCache = new Map<string, string>()
   let mealPlanId: string | null = null
 
   if (input.mealPlanTemplateId) {
-    mealPlanId = await cloneMealPlanFromTemplate(input.mealPlanTemplateId, user, user.gymId)
-  }
-
-  const resolveRoutineClone = async (templateId: string) => {
-    if (routineCloneCache.has(templateId)) {
-      return routineCloneCache.get(templateId)!
-    }
-    const clonedId = await cloneRoutineFromTemplate(templateId, user, user.gymId)
-    routineCloneCache.set(templateId, clonedId)
-    return clonedId
+    mealPlanId = await resolveMealPlanReference(input.mealPlanTemplateId, user)
   }
 
   const weeklySchedule: BuiltProgram['weeklySchedule'] = []
@@ -183,7 +95,7 @@ export async function buildProgramFromTemplates(
       if (!templateId) {
         throw new Error('Cada día activo debe tener una rutina asignada')
       }
-      routineId = await resolveRoutineClone(templateId)
+      routineId = await resolveRoutineReference(templateId, user)
     }
 
     weeklySchedule.push({

@@ -98,11 +98,11 @@ function routineOptionId(routine: RoutineOption): string {
 }
 
 function resolveTemplateId(
-  routineRef?: { _id?: string; id?: string; sourceRoutineId?: string } | string | null,
+  routineRef?: { _id?: string; id?: string } | string | null,
 ): string {
   if (!routineRef) return ""
   if (typeof routineRef === "string") return routineRef
-  return routineRef.sourceRoutineId || routineRef.id || routineRef._id || ""
+  return routineRef.id || routineRef._id || ""
 }
 
 function buildFormStateFromAssignment(existingAssignment?: ExistingAssignmentForEdit | null) {

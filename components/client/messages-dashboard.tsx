@@ -1,10 +1,10 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Loader2, Send, MessageSquare, Sparkles } from "lucide-react"
+import { ArrowLeft, Loader2, MessageSquare, Send, Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 
 type MessageEntry = {
@@ -113,10 +113,23 @@ export function MessagesDashboard({ onBack, userId, trainerId }: MessagesDashboa
       setSending(false)
     }
   }
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" onClick={onBack} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver al Dashboard
+        </Button>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-2 sm:px-4 xl:px-2 2xl:px-4">
-      <Button variant="ghost" onClick={onBack} className="gap-2 px-0 hover:bg-transparent">
+    <div className="space-y-6">
+      <Button variant="ghost" onClick={onBack} className="gap-2">
         <ArrowLeft className="h-4 w-4" />
         Volver al Dashboard
       </Button>

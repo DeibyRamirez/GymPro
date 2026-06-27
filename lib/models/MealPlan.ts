@@ -7,6 +7,7 @@ export interface IMeal {
   time: string;
   foods: string[];
   calories: number;
+  images?: string[];
   macros?: {
     protein: number;
     carbs: number;
@@ -50,6 +51,14 @@ const MealSchema = new Schema<IMeal>({
     type: Number,
     required: [true, 'Las calorías son requeridas'],
     min: [0, 'Las calorías no pueden ser negativas']
+  },
+  images: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: (items: string[]) => items.length <= 4,
+      message: 'Máximo 4 imágenes por comida',
+    },
   },
   macros: {
     protein: {

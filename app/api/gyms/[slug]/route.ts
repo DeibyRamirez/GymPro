@@ -56,6 +56,19 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ slug: s
     const { slug } = await context.params;
     const body = await req.json();
     logApiRequest('/api/gyms/[slug] PUT', { currentUserId: currentUser._id.toString(), role: currentUser.role, slug, keys: Object.keys(body || {}) });
+
+    const existingGym = await Gym.findOne({ slug });
+    if (!existingGym) {
+      return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });
+    }
+
+    if (
+      currentUser.role === 'admin' &&
+      currentUser.gymId?.toString() !== existingGym._id.toString()
+    ) {
+      return NextResponse.json({ error: 'Solo puedes editar tu propio gimnasio' }, { status: 403 });
+    }
+
     const gym = await Gym.findOneAndUpdate({ slug }, body, { new: true });
 
     if (!gym) {

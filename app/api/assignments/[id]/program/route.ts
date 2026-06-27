@@ -87,7 +87,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const populated = await Assignment.findById(assignment._id)
       .populate('clientId', 'name email avatar role trainerId')
       .populate('trainerId', 'name email avatar role')
-      .populate({ path: 'routineId', select: 'name description duration difficulty sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image instructions' } })
+      .populate({ path: 'routineId', select: 'name description duration difficulty sourceRoutineId', populate: { path: 'exercises.exercise', select: 'name image images instructions' } })
       .populate('mealPlanId', 'name description calories duration meals')
 
     recordActivitySafe({

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import type { User } from "@/lib/auth"
 import type { Routine as BaseRoutine } from "@/lib/data"
+import type { LucideIcon } from "lucide-react"
 import {
   ArrowLeft,
   CalendarDays,
@@ -22,7 +23,6 @@ import {
   Scale,
   Star,
   Trophy,
-  User as UserIcon,
   Utensils
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -36,7 +36,12 @@ import { ProgressOverview } from "./progress-overview"
 import { ReportsDashboard } from "./reports-dashboard"
 import { TrainerInfoCard } from "./trainer-info-card"
 
-interface ClientDashboardProps { client: User }
+interface ClientDashboardProps {
+  client: User
+  profileRequest?: number
+}
+
+type ClientDashboardView = "dashboard" | "calendar" | "body" | "messages" | "reports" | "profile"
 
 type AssignedRoutineForView = Omit<BaseRoutine, 'exercises'> & {
   id?: string
@@ -108,7 +113,7 @@ function NavAction({
   onClick,
   accent,
 }: {
-  icon: React.ElementType
+  icon: LucideIcon
   label: string
   onClick: () => void
   accent: string
@@ -133,7 +138,7 @@ function AchievementItem({
   description,
   unlocked,
 }: {
-  icon: React.ElementType
+  icon: LucideIcon
   title: string
   description: string
   unlocked: boolean
@@ -166,7 +171,7 @@ function PlanSection({
   onView,
   accent,
 }: {
-  icon: React.ElementType
+  icon: LucideIcon
   label: string
   name?: string
   meta?: string
@@ -201,8 +206,8 @@ function PlanSection({
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
-export function ClientDashboard({ client }: ClientDashboardProps) {
-  const [view, setView] = useState<"dashboard" | "calendar" | "body" | "messages" | "reports" | "profile">("dashboard")
+export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardProps) {
+  const [view, setView] = useState<ClientDashboardView>("dashboard")
   const [viewingRoutine, setViewingRoutine] = useState<AssignedRoutineForView | null>(null)
   const [workoutDate, setWorkoutDate] = useState<string | undefined>(undefined)
   const [viewingMealPlan, setViewingMealPlan] = useState<AssignedMealPlanForView | null>(null)
@@ -217,6 +222,14 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
   const [trainer, setTrainer] = useState<Trainer | null>(null)
   const [showCreateRoutine, setShowCreateRoutine] = useState(false)
   const lastLoadedKeyRef = useRef<string | null>(null)
+  const lastProfileRequestRef = useRef(0)
+
+  useEffect(() => {
+    if (profileRequest > lastProfileRequestRef.current) {
+      lastProfileRequestRef.current = profileRequest
+      setView("profile")
+    }
+  }, [profileRequest])
 
   const normalizeMealPlan = useCallback((plan: unknown): AssignedMealPlanForView | null => {
     if (!plan || typeof plan !== "object") return null
@@ -340,7 +353,14 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
     )
   if (view === "body") return <BodyProgressDashboard onBack={() => setView("dashboard")} userId={client.id} gender={client.gender} />
   if (view === "messages") return <MessagesDashboard onBack={() => setView("dashboard")} userId={client.id} trainerId={trainer?.id || client.trainerId} />
-  if (view === "reports") return <ReportsDashboard onBack={() => setView("dashboard")} userId={client.id} />
+  if (view === "reports")
+    return (
+      <ReportsDashboard
+        onBack={() => setView("dashboard")}
+        userId={client.id}
+        clientName={client.name}
+      />
+    )
   if (viewingRoutine)
     return (
       <RoutineDetailView
@@ -404,10 +424,7 @@ export function ClientDashboard({ client }: ClientDashboardProps) {
 
           {/* Right: CTA buttons */}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => setView("profile")}>
-              <UserIcon className="mr-2 h-4 w-4" />
-              Mi Perfil
-            </Button>
+
             <Button size="sm" onClick={() => setShowCreateRoutine(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Crear rutina propia

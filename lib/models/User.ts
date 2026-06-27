@@ -31,6 +31,8 @@ export interface IUser extends Document {
     description?: string;
     featured?: boolean;
   };
+  passwordResetTokenHash?: string | null;
+  passwordResetExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -146,7 +148,17 @@ const UserSchema = new Schema<IUser>({
     price: { type: Number, min: 0 },
     description: { type: String, trim: true },
     featured: { type: Boolean, default: false },
-  }
+  },
+  passwordResetTokenHash: {
+    type: String,
+    default: null,
+    select: false,
+  },
+  passwordResetExpires: {
+    type: Date,
+    default: null,
+    select: false,
+  },
 }, {
   timestamps: true,
     toJSON: {

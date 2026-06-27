@@ -9,6 +9,7 @@ import {
 } from '@/lib/meal-plan/templates';
 import { buildPagination, parsePagination } from '@/lib/pagination';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
+import { normalizeImages } from '@/lib/images/constants';
 
 
 type JwtPayload = { userId: string }
@@ -134,12 +135,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedMeals = meals.map((meal: { images?: string[]; image?: string; [key: string]: unknown }) => ({
+      ...meal,
+      images: normalizeImages(meal.images, meal.image),
+    }));
+
     // Crear el plan alimenticio
     const mealPlan = new MealPlan({
       name,
       description,
       calories,
-      meals,
+      meals: normalizedMeals,
       duration,
       tags: tags || [],
       createdBy: user._id,

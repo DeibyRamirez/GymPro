@@ -1,5 +1,6 @@
 "use client"
 
+import { ChangePasswordForm } from "@/components/auth/change-password-form"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, Save, Loader2 } from "lucide-react"
+import { Shield, User, Save, Loader2 } from "lucide-react"
 
 interface ClientProfileProps {
   clientId: string
@@ -149,16 +150,17 @@ export function ClientProfile({ clientId, onUpdate }: ClientProfileProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <User className="h-5 w-5" />
-          <CardTitle>Mi Perfil</CardTitle>
-        </div>
-        <CardDescription>Actualiza tu información personal y del gimnasio</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            <CardTitle>Mi Perfil</CardTitle>
+          </div>
+          <CardDescription>Actualiza tu información personal y del gimnasio</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nombre completo</Label>
             <Input
@@ -316,6 +318,20 @@ export function ClientProfile({ clientId, onUpdate }: ClientProfileProps) {
         </form>
       </CardContent>
     </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            <CardTitle>Seguridad</CardTitle>
+          </div>
+          <CardDescription>Cambia tu contraseña cuando lo necesites</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

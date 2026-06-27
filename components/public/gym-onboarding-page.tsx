@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CheckCircle2, Sparkles } from "lucide-react"
@@ -129,7 +130,7 @@ export function GymOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="adminPassword">Contraseña del admin</Label>
-                  <Input id="adminPassword" type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+                  <PasswordInput id="adminPassword" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Teléfono</Label>

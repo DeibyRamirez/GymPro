@@ -152,12 +152,12 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-11 w-11 rounded-full ring-1 ring-border/60 hover:bg-muted/70 hover:ring-primary/30"
+          className="relative h-11 w-11 rounded-full p-0 text-foreground ring-1 ring-border/60 transition hover:bg-muted/70 hover:text-foreground hover:ring-primary/30"
           aria-label="Notificaciones"
           onMouseEnter={prefetchUnreadCount}
           onFocus={prefetchUnreadCount}
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-5 w-5 shrink-0" />
           {unreadCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
               {unreadCount > 99 ? "99+" : unreadCount}

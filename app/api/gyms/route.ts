@@ -147,12 +147,25 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { slug, ...update } = body;
-    logApiRequest('/api/gyms PUT', { currentUserId: currentUser._id.toString(), role: currentUser.role, slug, keys: Object.keys(update || {}) });
+    const slug = String(body.slug || "").trim();
+    logApiRequest('/api/gyms PUT', { currentUserId: currentUser._id.toString(), role: currentUser.role, slug, keys: Object.keys(body || {}) });
     if (!slug) {
       return NextResponse.json({ error: 'El slug del gimnasio es requerido' }, { status: 400 });
     }
 
+    const existingGym = await Gym.findOne({ slug });
+    if (!existingGym) {
+      return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });
+    }
+
+    if (
+      currentUser.role === 'admin' &&
+      currentUser.gymId?.toString() !== existingGym._id.toString()
+    ) {
+      return NextResponse.json({ error: 'Solo puedes editar tu propio gimnasio' }, { status: 403 });
+    }
+
+    const { slug: _ignoredSlug, ...update } = body;
     const gym = await Gym.findOneAndUpdate({ slug }, update, { new: true });
     if (!gym) {
       return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });

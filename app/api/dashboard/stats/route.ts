@@ -69,8 +69,8 @@ export async function GET(req: NextRequest) {
         recentEvents
       ] = await Promise.all([
         User.countDocuments({ ...gymFilter, trainerId: user._id, isActive: true }),
-        Routine.countDocuments({ ...gymFilter, createdBy: user._id, isActive: true }),
-        MealPlan.countDocuments({ ...gymFilter, createdBy: user._id, isActive: true }),
+        Routine.countDocuments({ ...gymFilter, createdBy: user._id, isActive: true, isTemplate: { $ne: false } }),
+        MealPlan.countDocuments({ ...gymFilter, createdBy: user._id, isActive: true, isTemplate: { $ne: false } }),
         Assignment.countDocuments({ ...gymFilter, trainerId: user._id, status: 'active' }),
         CalendarEvent.find({
           ...gymFilter,

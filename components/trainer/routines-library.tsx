@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import type { Routine } from "@/lib/data"
-import { Clock, Copy, Dumbbell, Edit, Eye, Plus, Search, TrendingUp } from "lucide-react"
+import { Clock, Dumbbell, Edit, Eye, Plus, Search, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
 import { CreateRoutineDialog } from "./create-routine-dialog"
 import { EditRoutineDialog } from "./edit-routine-dialog"
@@ -13,6 +13,18 @@ import { ViewRoutineDialog } from "./view-routine-dialog"
 
 interface RoutinesLibraryProps {
   trainerId: string
+}
+
+async function fetchTemplateRoutines(): Promise<Routine[]> {
+  const res = await fetch("/api/routines?templatesOnly=true", {
+    method: "GET",
+    credentials: "include",
+  })
+
+  if (!res.ok) throw new Error("Error al obtener rutinas")
+
+  const data = await res.json()
+  return data.routines || []
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -67,30 +79,24 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
 
 
   useEffect(() => {
-    async function fetchRoutines() {
+    async function loadRoutines() {
       try {
         setLoading(true)
         setError("")
-
-        const res = await fetch("/api/routines?templatesOnly=true", {
-          method: "GET",
-          credentials: "include"
-        })
-
-        if (!res.ok) throw new Error("Error al obtener rutinas")
-
-        const data = await res.json()
-        setRoutines(data.routines)
-      }
-      catch (err: unknown) {
+        setRoutines(await fetchTemplateRoutines())
+      } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Error desconocido")
-      }
-      finally {
+      } finally {
         setLoading(false)
       }
     }
-    fetchRoutines()
+
+    void loadRoutines()
   }, [])
+
+  const refreshRoutines = async () => {
+    setRoutines(await fetchTemplateRoutines())
+  }
 
   if (loading) return <p>Cargando rutinas...</p>
   if (error) return <p>Error: {error}</p>
@@ -174,9 +180,6 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
                   <Edit className="h-4 w-4" />
                   Editar
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => console.log("Duplicar", routine._id)}>
-                  <Copy className="h-4 w-4" />
-                </Button>
 
               </div>
             </div>
@@ -188,11 +191,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
       <CreateRoutineDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
-        onSuccess={async () => {
-          const res = await fetch("/api/routines", { credentials: "include" })
-          const data = await res.json()
-          setRoutines(data.routines || [])
-        }}
+        onSuccess={refreshRoutines}
       />
       {selectedRoutine && (
         <>
@@ -201,11 +200,7 @@ export function RoutinesLibrary({ trainerId }: RoutinesLibraryProps) {
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
             routine={selectedRoutine}
-            onUpdated={async () => {
-              const res = await fetch("/api/routines", { credentials: "include" })
-              const data = await res.json()
-              setRoutines(data.routines || [])
-            }}
+            onUpdated={refreshRoutines}
           />
           <ViewRoutineDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} routine={selectedRoutine} />
         </>

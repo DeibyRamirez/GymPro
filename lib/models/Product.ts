@@ -10,6 +10,7 @@ export interface IProduct extends Document {
   stock: number;
   lowStockThreshold: number;
   image?: string;
+  images?: string[];
   isActive: boolean;
   gymId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
@@ -24,6 +25,14 @@ const ProductSchema = new Schema<IProduct>({
   stock: { type: Number, required: true, min: 0, default: 0 },
   lowStockThreshold: { type: Number, required: true, min: 0, default: 5 },
   image: { type: String, default: '/placeholder.svg' },
+  images: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: (items: string[]) => items.length <= 4,
+      message: 'Máximo 4 imágenes por producto',
+    },
+  },
   isActive: { type: Boolean, default: true },
   gymId: { type: mongoose.Schema.Types.ObjectId, ref: 'Gym', default: null },
 }, {

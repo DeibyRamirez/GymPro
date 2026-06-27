@@ -4,6 +4,7 @@ import connectDB from '@/lib/mongodb';
 import Routine from '@/lib/models/Routine';
 import User from '@/lib/models/User';
 import Exercise from '@/lib/models/Exercise';
+import { normalizeImages, primaryImage } from '@/lib/images/constants';
 
 
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const routine = await Routine.findById(id)
       .populate("createdBy", "name email")
-      .populate("exercises.exercise", "name image muscleGroups equipment");
+      .populate("exercises.exercise", "name image images muscleGroups equipment");
 
     if (!routine) {
       return NextResponse.json({ error: "Rutina no encontrada" }, { status: 404 });
@@ -62,6 +63,17 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const user = await verifyAuth(req);
     const body = await req.json();
 
+    const routine = await Routine.findById(id);
+    if (!routine) {
+      return NextResponse.json({ error: "Rutina no encontrada" }, { status: 404 });
+    }
+    if (String(routine.gymId || null) !== String(user.gymId || null)) {
+      return NextResponse.json({ error: 'No tienes permisos para editar esta rutina' }, { status: 403 });
+    }
+    if (user.role === 'trainer' && routine.createdBy.toString() !== user._id.toString()) {
+      return NextResponse.json({ error: 'No tienes permisos para editar esta rutina' }, { status: 403 });
+    }
+
     const exercisesWithIds: Array<{
       exercise: unknown
       sets: unknown
@@ -73,23 +85,40 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     // Recorremos los ejercicios del body
     for (const ex of body.exercises) {
-      let exerciseId = ex._id || ex.exercise;
+      const exName = String(ex.name || "").trim();
+      let exerciseId = ex.exercise || ex._id;
+      const exerciseImages = normalizeImages(ex.images, ex.image);
 
-      // Si no tiene ID, creamos un nuevo ejercicio
-        if (!exerciseId) {
+      if (!exerciseId && exName) {
+        const existingExercise = await Exercise.findOne({
+          name: { $regex: `^${exName}$`, $options: 'i' },
+          createdBy: user._id,
+        });
+        if (existingExercise) {
+          exerciseId = existingExercise._id;
+        }
+      }
+
+      if (!exerciseId) {
           const newExercise = await Exercise.create({
-          name: ex.name || "Ejercicio sin nombre",
+          name: exName || "Ejercicio sin nombre",
           instructions: ex.instructions || "Sin instrucciones",
           sets: ex.sets || 1,
           reps: ex.reps || "1",
           rest: ex.rest || "0s",
-          image: ex.image || "",
+          images: exerciseImages,
+          image: primaryImage(exerciseImages, ex.image, '/default-exercise.png'),
             muscleGroups: ex.muscleGroups || [],
             equipment: ex.equipment || [],
             createdBy: user._id,
             gymId: user.gymId || null,
           });
           exerciseId = newExercise._id;
+      } else if (exerciseImages.length > 0) {
+          await Exercise.findByIdAndUpdate(exerciseId, {
+            images: exerciseImages,
+            image: primaryImage(exerciseImages, ex.image, '/default-exercise.png'),
+          });
         }
 
       exercisesWithIds.push({
@@ -113,16 +142,13 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       },
       { new: true }
     )
-      .populate("exercises.exercise", "name image muscleGroups equipment");
+      .populate("exercises.exercise", "name image images muscleGroups equipment");
 
     if (!updatedRoutine) {
       return NextResponse.json(
         { error: "Rutina no encontrada" },
         { status: 404 }
       );
-    }
-    if (String(updatedRoutine.gymId || null) !== String(user.gymId || null)) {
-      return NextResponse.json({ error: 'No tienes permisos para editar esta rutina' }, { status: 403 });
     }
 
     return NextResponse.json(updatedRoutine);

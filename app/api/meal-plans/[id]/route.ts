@@ -4,6 +4,7 @@ import connectDB from "@/lib/mongodb";
 import MealPlan from "@/lib/models/MealPlan";
 import User from "@/lib/models/User";
 import { logApiError, logApiRequest } from '@/lib/api-debug';
+import { normalizeImages } from '@/lib/images/constants';
 
 
 
@@ -62,6 +63,13 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 
     const data = await req.json();
     delete data.createdBy;
+
+    if (Array.isArray(data.meals)) {
+      data.meals = data.meals.map((meal: { images?: string[]; image?: string; [key: string]: unknown }) => ({
+        ...meal,
+        images: normalizeImages(meal.images, meal.image),
+      }));
+    }
 
     const updatedMealPlan = await MealPlan.findByIdAndUpdate(id, data, {
       new: true,

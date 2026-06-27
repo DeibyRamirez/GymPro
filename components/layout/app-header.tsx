@@ -12,17 +12,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { User } from "@/lib/auth"
 import { Dumbbell, LogOut, Settings, UserIcon } from "lucide-react"
-import { useState } from "react"
 import { NotificationBell } from "@/components/layout/notification-bell"
 
 interface AppHeaderProps {
   user: User
   onLogout: () => void
+  onProfileClick?: () => void
+  onSettingsClick?: () => void
 }
 
-export function AppHeader({ user, onLogout }: AppHeaderProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [showProfile, setShowProfile] = useState(false)
+export function AppHeader({ user, onLogout, onProfileClick, onSettingsClick }: AppHeaderProps) {
   const roleLabels: Record<User["role"], string> = {
     superadmin: "Super Administrador",
     admin: "Administrador",
@@ -55,7 +54,7 @@ export function AppHeader({ user, onLogout }: AppHeaderProps) {
 
           <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative mr-2 h-11 w-11 rounded-full p-0 ring-1 ring-border/60 transition hover:bg-muted/70 hover:ring-primary/30 lg:mr-4">
+            <Button variant="ghost" className="relative mr-2 h-11 w-11 rounded-full p-0 text-foreground ring-1 ring-border/60 transition hover:bg-muted/70 hover:text-foreground hover:ring-primary/30 lg:mr-4">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
@@ -76,7 +75,7 @@ export function AppHeader({ user, onLogout }: AppHeaderProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => setShowProfile(true)}
+              onClick={() => onProfileClick?.()}
               className="gap-3 py-2.5"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -84,7 +83,10 @@ export function AppHeader({ user, onLogout }: AppHeaderProps) {
               </span>
               <span>Perfil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="py-2.5">
+            <DropdownMenuItem
+              onClick={() => onSettingsClick?.()}
+              className="py-2.5"
+            >
               <Settings className="mr-3 h-4 w-4" />
               <span>Configuración</span>
             </DropdownMenuItem>

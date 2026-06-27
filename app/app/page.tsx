@@ -37,6 +37,7 @@ export default function AppPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [showRegister, setShowRegister] = useState(false)
   const [loadingSession, setLoadingSession] = useState(true)
+  const [clientProfileRequest, setClientProfileRequest] = useState(0)
 
   useEffect(() => {
     const loadSession = async () => {
@@ -87,11 +88,22 @@ export default function AppPage() {
   return (
     // Renderiza el dashboard correspondiente según el rol del usuario
     <div className="min-h-screen bg-background">
-      <AppHeader user={currentUser} onLogout={handleLogout} />
+      <AppHeader
+        user={currentUser}
+        onLogout={handleLogout}
+        onProfileClick={
+          currentUser.role === "client"
+            ? () => setClientProfileRequest((count) => count + 1)
+            : undefined
+        }
+        onSettingsClick={() => router.push("/app/account")}
+      />
       <main className="w-full max-w-[1800px] mx-auto px-4 py-6 lg:px-6 2xl:px-8">
         {currentUser.role === 'admin' && <AdminDashboard />}
         {currentUser.role === 'trainer' && <TrainerDashboard trainerId={currentUser.id} />}
-        {currentUser.role === 'client' && <ClientDashboard client={currentUser} />}
+        {currentUser.role === 'client' && (
+          <ClientDashboard client={currentUser} profileRequest={clientProfileRequest} />
+        )}
       </main>
     </div>
   )

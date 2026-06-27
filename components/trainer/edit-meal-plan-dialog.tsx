@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { CloudinaryImageUpload } from "@/components/ui/cloudinary-image-upload";
 import type { Meal, MealPlan } from "@/lib/data";
 import { Flame, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -31,6 +32,7 @@ interface MealForm extends Omit<Meal, "foods"> {
   protein: string;
   carbs: string;
   fats: string;
+  images: string[];
 }
 
 function buildInitialMeals(plan: MealPlan): MealForm[] {
@@ -41,6 +43,9 @@ function buildInitialMeals(plan: MealPlan): MealForm[] {
     protein: meal.macros?.protein?.toString() || "",
     carbs: meal.macros?.carbs?.toString() || "",
     fats: meal.macros?.fats?.toString() || "",
+    images: Array.isArray((meal as Meal & { images?: string[] }).images)
+      ? (meal as Meal & { images?: string[] }).images || []
+      : [],
   }));
 }
 
@@ -73,6 +78,7 @@ function EditMealPlanForm({
         protein: "",
         carbs: "",
         fats: "",
+        images: [],
       },
     ]);
   };
@@ -81,7 +87,7 @@ function EditMealPlanForm({
   //   setMeals(meals.filter((meal) => meal.id !== id));
   // };
 
-  const updateMeal = (id: string, field: keyof MealForm, value: string | number) => {
+  const updateMeal = (id: string, field: keyof MealForm, value: string | number | string[]) => {
     setMeals(meals.map((meal) => (meal.id === id ? { ...meal, [field]: value } : meal)));
   };
 
@@ -115,6 +121,7 @@ function EditMealPlanForm({
         meals: meals.map((m) => ({
           ...m,
           foods: m.foods.split(",").map((f) => f.trim()),
+          images: m.images,
           macros: {
             protein: Number.parseInt(m.protein) || 0,
             carbs: Number.parseInt(m.carbs) || 0,
@@ -303,6 +310,13 @@ function EditMealPlanForm({
                         <Input value={meal.fats} onChange={(e) => updateMeal(meal.id, "fats", e.target.value)} />
                       </div>
                     </div>
+
+                    <CloudinaryImageUpload
+                      label="Imágenes de la comida"
+                      value={meal.images}
+                      onChange={(images) => updateMeal(meal.id, "images", images)}
+                      folder="gympro/meals"
+                    />
 
                     <div className="space-y-2">
                       <Label>Alimentos (separados por coma)</Label>

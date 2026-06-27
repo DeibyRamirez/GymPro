@@ -3,6 +3,7 @@ import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Exercise from '@/lib/models/Exercise';
 import { buildPagination, parsePagination } from '@/lib/pagination';
+import { normalizeImages, primaryImage } from '@/lib/images/constants';
 import { logApiError, logApiRequest } from '@/lib/api-debug';
 
 
@@ -20,8 +21,12 @@ export async function GET(req: NextRequest) {
     const muscleGroup = searchParams.get('muscleGroup') || '';
     logApiRequest('/api/exercises GET', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, query: { page, limit, search, muscleGroup } });
 
-    // Construir filtros
     const filters: Record<string, unknown> = user.gymId ? { gymId: user.gymId } : { gymId: null };
+
+    // Entrenadores: solo ejercicios de su biblioteca personal
+    if (user.role === 'trainer') {
+      filters.createdBy = user._id
+    }
 
     if (search) {
       filters.name = { $regex: search, $options: 'i' };
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     // Todos los usuarios autenticados pueden crear ejercicios
     const data = await req.json();
-    const { name, sets, reps, rest, image, instructions, muscleGroups, equipment, difficulty } = data;
+    const { name, sets, reps, rest, image, images, instructions, muscleGroups, equipment, difficulty } = data;
     logApiRequest('/api/exercises POST', { userId: user._id.toString(), role: user.role, gymId: user.gymId?.toString() || null, name, sets, reps, rest, difficulty, muscleGroupsCount: Array.isArray(muscleGroups) ? muscleGroups.length : 0 });
 
     // Validar datos requeridos
@@ -81,13 +86,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const exerciseImages = normalizeImages(images, image);
+
     // Crear el ejercicio
     const exercise = new Exercise({
       name,
       sets: parseInt(sets),
       reps,
       rest,
-      image: image || '/default-exercise.png',
+      images: exerciseImages,
+      image: primaryImage(exerciseImages, image, '/default-exercise.png'),
       instructions,
       muscleGroups,
       equipment: equipment || [],

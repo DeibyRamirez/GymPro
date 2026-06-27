@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-server';
 import connectDB from '@/lib/mongodb';
 import Exercise from '@/lib/models/Exercise';
-import User from '@/lib/models/User';
+import { normalizeImages, primaryImage } from '@/lib/images/constants';
 
 
 // Definición de los filtros que se pueden aplicar al obtener los ejercicios
@@ -41,7 +41,19 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ error: 'No tienes permisos para editar este ejercicio' }, { status: 403 });
     }
 
-    const updatedExercise = await Exercise.findByIdAndUpdate(id, await req.json(), { new: true, runValidators: true }).populate('createdBy', 'name email');
+    const data = await req.json();
+    const exerciseImages = normalizeImages(data.images, data.image);
+    const updatePayload = {
+      ...data,
+      ...(exerciseImages.length > 0 || data.images !== undefined || data.image !== undefined
+        ? {
+          images: exerciseImages,
+          image: primaryImage(exerciseImages, data.image, exercise.image || '/default-exercise.png'),
+        }
+        : {}),
+    };
+
+    const updatedExercise = await Exercise.findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true }).populate('createdBy', 'name email');
     return NextResponse.json({ message: 'Ejercicio actualizado exitosamente', exercise: updatedExercise });
   } catch {
     return NextResponse.json({ error: 'Error al actualizar ejercicio' }, { status: 500 });

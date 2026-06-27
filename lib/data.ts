@@ -15,6 +15,7 @@ export interface Exercise {
   reps: string
   rest: string
   image: string
+  images?: string[]
   instructions: string
 }
 
@@ -34,6 +35,8 @@ export interface Meal {
   time: string
   foods: string[]
   calories: number
+  image?: string
+  images?: string[]
   macros?: {
     protein: number
     carbs: number
