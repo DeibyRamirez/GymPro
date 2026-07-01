@@ -1,11 +1,17 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI =
-  process.env.MONGODB_URI?.trim() ||
-  (process.env.NODE_ENV !== 'production' ? 'mongodb://localhost:27017/fitpro' : '')
+function resolveMongoUri(): string {
+  const uri =
+    process.env.MONGODB_URI?.trim() ||
+    (process.env.NODE_ENV !== 'production' ? 'mongodb://localhost:27017/fitpro' : '');
 
-if (!MONGODB_URI) {
-  throw new Error('Define MONGODB_URI en las variables de entorno (Vercel → Settings → Environment Variables).')
+  if (!uri) {
+    throw new Error(
+      'Define MONGODB_URI en las variables de entorno (Vercel → Settings → Environment Variables).',
+    );
+  }
+
+  return uri;
 }
 
 interface MongooseCache {
@@ -34,7 +40,7 @@ async function connectDB(): Promise<typeof mongoose> {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(resolveMongoUri(), opts).then((mongoose) => {
       console.log('✅ Conectado a MongoDB');
       return mongoose;
     });
@@ -51,4 +57,3 @@ async function connectDB(): Promise<typeof mongoose> {
 }
 
 export default connectDB;
-
