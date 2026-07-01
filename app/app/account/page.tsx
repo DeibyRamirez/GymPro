@@ -47,7 +47,11 @@ export default function AccountPage() {
       <AppHeader
         user={user}
         onLogout={handleLogout}
-        onProfileClick={user.role === "client" ? () => router.push("/app") : undefined}
+        onProfileClick={
+          ["client", "admin", "trainer"].includes(user.role)
+            ? () => router.push("/app")
+            : undefined
+        }
         onSettingsClick={() => router.push("/app/account")}
       />
       <main className="mx-auto w-full max-w-2xl px-4 py-6 lg:px-6">

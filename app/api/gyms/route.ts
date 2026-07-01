@@ -82,6 +82,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'La contraseña del admin debe tener al menos 6 caracteres' }, { status: 400 });
     }
 
+    if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      return NextResponse.json(
+        { error: 'El subdominio debe contener letras minúsculas, números o guiones (ej: mi-gimnasio)' },
+        { status: 400 },
+      );
+    }
+
     const exists = await Gym.findOne({ slug });
     if (exists) {
       return NextResponse.json({ error: 'El subdominio ya existe' }, { status: 400 });
@@ -134,6 +141,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ gym }, { status: 201 });
   } catch (error) {
     logApiError('/api/gyms POST', error);
+
+    const err = error as { name?: string; code?: number; message?: string; errors?: Record<string, { message: string }> };
+
+    if (err.name === 'ValidationError' && err.errors) {
+      const message = Object.values(err.errors)
+        .map((e) => e.message)
+        .join(', ');
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    if (err.code === 11000) {
+      return NextResponse.json({ error: 'El subdominio o correo del admin ya está registrado' }, { status: 400 });
+    }
+
+    if (err.name === 'MongoServerError' || err.message?.includes('MongoNetworkError') || err.message?.includes('ECONNREFUSED')) {
+      return NextResponse.json(
+        { error: 'No se pudo conectar a la base de datos. Verifica MONGODB_URI en Vercel.' },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json({ error: 'Error al crear gimnasio' }, { status: 500 });
   }
 }
@@ -165,7 +193,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Solo puedes editar tu propio gimnasio' }, { status: 403 });
     }
 
-    const { slug: _ignoredSlug, ...update } = body;
+    const update = { ...body }
+    delete update.slug
     const gym = await Gym.findOneAndUpdate({ slug }, update, { new: true });
     if (!gym) {
       return NextResponse.json({ error: 'Gimnasio no encontrado' }, { status: 404 });

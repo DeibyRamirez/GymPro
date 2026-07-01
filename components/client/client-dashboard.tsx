@@ -4,13 +4,16 @@ import { RoutineDetailView } from "@/components/routines/routine-detail-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
+import type { Achievement } from "@/lib/achievements"
 import type { User } from "@/lib/auth"
 import type { Routine as BaseRoutine } from "@/lib/data"
 import type { LucideIcon } from "lucide-react"
 import {
   ArrowLeft,
   CalendarDays,
+  CheckCircle2,
   ChevronRight,
   Dumbbell,
   FileText,
@@ -21,9 +24,9 @@ import {
   MessageSquare,
   Plus,
   Scale,
-  Star,
+  Target,
   Trophy,
-  Utensils
+  Utensils,
 } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { MealPlanDetailView } from "../meal-plans/meal-plan-detail-view"
@@ -112,23 +115,60 @@ function NavAction({
   label,
   onClick,
   accent,
+  badgeCount = 0,
 }: {
   icon: LucideIcon
   label: string
   onClick: () => void
   accent: string
+  badgeCount?: number
 }) {
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-center gap-2 rounded-2xl border bg-card/60 px-5 py-4 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-card hover:shadow-md"
+      className="group relative flex flex-col items-center gap-2 rounded-2xl border bg-card/60 px-5 py-4 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-card hover:shadow-md"
     >
-      <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform group-hover:scale-110 ${accent}`}>
+      <div className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-transform group-hover:scale-110 ${accent}`}>
         <Icon className="h-5 w-5" />
+        {badgeCount > 0 ? (
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </span>
+        ) : null}
       </div>
       <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">{label}</span>
     </button>
   )
+}
+
+const ACHIEVEMENT_CATEGORY_ORDER: Achievement["category"][] = [
+  "measurement",
+  "goal",
+  "routine",
+  "nutrition",
+  "consistency",
+]
+
+function sortAchievements(items: Achievement[]) {
+  return [...items].sort((a, b) => {
+    if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1
+    const categoryDiff =
+      ACHIEVEMENT_CATEGORY_ORDER.indexOf(a.category) -
+      ACHIEVEMENT_CATEGORY_ORDER.indexOf(b.category)
+    if (categoryDiff !== 0) return categoryDiff
+    return a.title.localeCompare(b.title, "es")
+  })
+}
+
+function getAchievementIcon(id: string): LucideIcon {
+  if (id.startsWith("routine")) return Dumbbell
+  if (id.startsWith("nutrition")) return Utensils
+  if (id.includes("goal") || id.includes("profile")) return Target
+  if (id.includes("streak") || id.includes("day")) return Flame
+  if (id.includes("measurement") || id.startsWith("first-measurement") || id.startsWith("ten-measurements") || id.startsWith("first-month")) {
+    return Scale
+  }
+  return Medal
 }
 
 // ── Achievement badge ──────────────────────────────────────────────────────
@@ -137,26 +177,41 @@ function AchievementItem({
   title,
   description,
   unlocked,
+  progressPercent,
 }: {
   icon: LucideIcon
   title: string
   description: string
   unlocked: boolean
+  progressPercent?: number
 }) {
   return (
-    <div className={`flex items-start gap-4 rounded-2xl border p-4 transition-colors ${unlocked ? "bg-primary/5 border-primary/20" : "opacity-60"}`}>
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${unlocked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-        <Icon className="h-5 w-5" />
+    <div className={`rounded-2xl border p-3 transition-colors h-full ${unlocked ? "bg-primary/5 border-primary/20" : "bg-card"}`}>
+      <div className="flex h-full flex-col gap-2">
+        <div className="flex items-start gap-2.5">
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${unlocked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-semibold leading-tight">{title}</p>
+              {unlocked ? (
+                <Badge variant="secondary" className="shrink-0 px-1.5 text-[10px]">
+                  <CheckCircle2 className="mr-0.5 h-3 w-3" />
+                  OK
+                </Badge>
+              ) : null}
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        {!unlocked && typeof progressPercent === "number" ? (
+          <div className="mt-auto space-y-1 pt-1">
+            <Progress value={progressPercent} className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground">{progressPercent}%</p>
+          </div>
+        ) : null}
       </div>
-      <div>
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-      </div>
-      {unlocked && (
-        <Badge variant="secondary" className="ml-auto shrink-0 text-xs">
-          ✓ Desbloqueado
-        </Badge>
-      )}
     </div>
   )
 }
@@ -220,6 +275,8 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
   } | null>(null)
   const [mealPlan, setMealPlan] = useState<AssignedMealPlanForView | null>(null)
   const [trainer, setTrainer] = useState<Trainer | null>(null)
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [unreadMessages, setUnreadMessages] = useState(0)
   const [showCreateRoutine, setShowCreateRoutine] = useState(false)
   const lastLoadedKeyRef = useRef<string | null>(null)
   const lastProfileRequestRef = useRef(0)
@@ -252,6 +309,17 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
         macros: { carbs: meal.macros?.carbs || 0, protein: meal.macros?.protein || 0, fats: meal.macros?.fats || 0 },
       })),
     }
+  }, [])
+
+  const refreshUnreadMessages = useCallback(async () => {
+    const response = await fetch("/api/messages/unread-count", { credentials: "include" })
+    if (!response.ok) return
+    const data = await response.json()
+    setUnreadMessages(data.unreadCount ?? 0)
+  }, [])
+
+  const handleMessagesRead = useCallback(() => {
+    setUnreadMessages(0)
   }, [])
 
   const reloadAssignments = useCallback(async () => {
@@ -312,6 +380,11 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
       setLoading(true)
       try {
         await reloadAssignments()
+        const progressResponse = await fetch(`/api/users/${client.id}/progress`, { credentials: "include" })
+        if (progressResponse.ok) {
+          const progressData = await progressResponse.json()
+          setAchievements(progressData.achievements || [])
+        }
         if (client.trainerId) {
           const trainerResponse = await fetch(`/api/users/${client.trainerId}`, { credentials: "include" })
           if (trainerResponse.ok) {
@@ -319,12 +392,23 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
             setTrainer(trainerData.user)
           }
         }
+        await refreshUnreadMessages()
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [client.id, client.trainerId, reloadAssignments])
+  }, [client.id, client.trainerId, reloadAssignments, refreshUnreadMessages])
+
+  useEffect(() => {
+    if (view !== "dashboard") return
+
+    const intervalId = window.setInterval(() => {
+      void refreshUnreadMessages()
+    }, 30000)
+
+    return () => window.clearInterval(intervalId)
+  }, [view, refreshUnreadMessages])
 
   const handleRoutineCreated = async () => {
     await reloadAssignments()
@@ -352,7 +436,19 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
       />
     )
   if (view === "body") return <BodyProgressDashboard onBack={() => setView("dashboard")} userId={client.id} gender={client.gender} />
-  if (view === "messages") return <MessagesDashboard onBack={() => setView("dashboard")} userId={client.id} trainerId={trainer?.id || client.trainerId} />
+  if (view === "messages") {
+    return (
+      <MessagesDashboard
+        onBack={() => {
+          setView("dashboard")
+          void refreshUnreadMessages()
+        }}
+        onMessagesRead={handleMessagesRead}
+        userId={client.id}
+        trainerId={trainer?.id || client.trainerId}
+      />
+    )
+  }
   if (view === "reports")
     return (
       <ReportsDashboard
@@ -397,6 +493,8 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
   const firstName = client.name.split(" ")[0]
   const hour = new Date().getHours()
   const greeting = hour < 12 ? "Buenos días" : hour < 18 ? "Buenas tardes" : "Buenas noches"
+  const unlockedAchievements = achievements.filter((item) => item.unlocked).length
+  const sortedAchievements = sortAchievements(achievements)
 
   return (
     <div className="w-full space-y-6 xl:px-2 2xl:px-4">
@@ -437,7 +535,13 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <NavAction icon={CalendarDays} label="Calendario" onClick={() => setView("calendar")} accent="bg-blue-500/15 text-blue-600 dark:text-blue-400" />
           <NavAction icon={Scale} label="Progreso" onClick={() => setView("body")} accent="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" />
-          <NavAction icon={MessageSquare} label="Mensajes" onClick={() => setView("messages")} accent="bg-violet-500/15 text-violet-600 dark:text-violet-400" />
+          <NavAction
+            icon={MessageSquare}
+            label="Mensajes"
+            onClick={() => setView("messages")}
+            accent="bg-violet-500/15 text-violet-600 dark:text-violet-400"
+            badgeCount={unreadMessages}
+          />
           <NavAction icon={FileText} label="Reportes" onClick={() => setView("reports")} accent="bg-amber-500/15 text-amber-600 dark:text-amber-400" />
         </div>
       </section>
@@ -447,19 +551,17 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
         <ProgressOverview clientId={client.id} />
       </section>
 
-      {/* ── MAIN GRID ────────────────────────────────────────────────────── */}
-      <section className="grid gap-6 lg:grid-cols-3">
-
-        {/* Left col — Plan actual ──────────────────────────────────────── */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* Routine + Meal plan */}
+      {/* ── PLAN ACTUAL + LOGROS ─────────────────────────────────────────── */}
+      <section className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="space-y-6">
           <Card className="overflow-hidden">
             <CardHeader className="border-b bg-muted/30 pb-4">
               <CardTitle className="text-base font-semibold">Plan actual</CardTitle>
-              <CardDescription className="text-xs">Rutina y alimentación asignadas por tu entrenador</CardDescription>
+              <CardDescription className="text-xs">
+                Rutina y alimentación asignadas por tu entrenador
+              </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+            <CardContent className="flex flex-col gap-4 p-5">
               <PlanSection
                 icon={Dumbbell}
                 label="Rutina"
@@ -484,44 +586,42 @@ export function ClientDashboard({ client, profileRequest = 0 }: ClientDashboardP
             </CardContent>
           </Card>
 
-          {/* Entrenador */}
-          {trainer && (
-            <TrainerInfoCard trainer={trainer} />
-          )}
+          {trainer ? <TrainerInfoCard trainer={trainer} /> : null}
         </div>
 
-        {/* Right col — Logros ──────────────────────────────────────────── */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="border-b bg-muted/30 pb-4">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Trophy className="h-4 w-4 text-amber-500" />
-                Logros
-              </CardTitle>
-              <CardDescription className="text-xs">Medallas automáticas y estado de avance</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 p-4">
-              <AchievementItem
-                icon={Star}
-                title="Primer registro"
-                description="Ya guardaste tu primera medición corporal."
-                unlocked
-              />
-              <AchievementItem
-                icon={Flame}
-                title="Racha consistente"
-                description="Sigue entrenando para desbloquear más logros."
-                unlocked={false}
-              />
-              <AchievementItem
-                icon={Medal}
-                title="Semana completa"
-                description="Completa 7 días seguidos de entrenamiento."
-                unlocked={false}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="flex max-h-[min(640px,70vh)] flex-col overflow-hidden">
+          <CardHeader className="shrink-0 border-b bg-muted/30 pb-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Trophy className="h-4 w-4 text-amber-500" />
+              Logros
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {achievements.length > 0
+                ? `${unlockedAchievements}/${achievements.length} logros desbloqueados`
+                : "Medallas automáticas según tu progreso real"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="min-h-0 flex-1 overflow-y-auto p-4">
+            {sortedAchievements.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Completa mediciones, rutinas y nutrición para desbloquear logros.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {sortedAchievements.map((achievement) => (
+                  <AchievementItem
+                    key={achievement.id}
+                    icon={getAchievementIcon(achievement.id)}
+                    title={achievement.title}
+                    description={achievement.description}
+                    unlocked={achievement.unlocked}
+                    progressPercent={achievement.progressPercent}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <CreateRoutineDialog

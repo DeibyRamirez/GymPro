@@ -3,42 +3,46 @@
 import { AdminHomeSection, type AdminDashboardView } from "@/components/admin/admin-home-section"
 import { AdminInventorySection } from "@/components/admin/admin-inventory-section"
 import { AdminMetricsSection } from "@/components/admin/admin-metrics-section"
+import { AdminProfile } from "@/components/admin/admin-profile"
 import { AdminUsersSection } from "@/components/admin/admin-users-section"
+import { Button } from "@/components/ui/button"
 import type { User } from "@/lib/auth"
-import { useEffect, useState } from "react"
+import { ArrowLeft } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
-type GymItem = { id: string; name: string; slug: string; location: string; status: string; adminEmail?: string }
 type DashboardStats = { totalUsers?: number; totalTrainers?: number; totalClients?: number; recentUsers?: User[] }
-type CurrentMe = { user?: { gymSlug?: string | null } }
+type CurrentMe = { user?: { gymSlug?: string | null; gymName?: string | null } }
 
-export function AdminDashboard() {
-  const [view, setView] = useState<AdminDashboardView>("home")
+interface AdminDashboardProps {
+  profileRequest?: number
+}
+
+export function AdminDashboard({ profileRequest = 0 }: AdminDashboardProps) {
+  const [view, setView] = useState<AdminDashboardView | "profile">("home")
+  const lastProfileRequestRef = useRef(0)
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<Array<User & { trainerId?: string; isActive?: boolean }>>([])
-  const [gyms, setGyms] = useState<GymItem[]>([])
-  const [selectedGymSlug, setSelectedGymSlug] = useState<string>("")
+  const [gymSlug, setGymSlug] = useState<string>("")
+  const [gymName, setGymName] = useState<string>("")
 
   useEffect(() => {
     async function fetchDashboardAdmin() {
       try {
-        const [statsRes, usersRes, meRes, gymsRes] = await Promise.all([
+        const [statsRes, usersRes, meRes] = await Promise.all([
           fetch("/api/dashboard/stats", { method: "GET", credentials: "include" }),
           fetch("/api/users", { method: "GET", credentials: "include" }),
           fetch("/api/auth/me", { credentials: "include" }),
-          fetch("/api/gyms", { credentials: "include" }),
         ])
 
         const statsData = await statsRes.json()
         const usersData = await usersRes.json()
         const meData = (await meRes.json()) as CurrentMe
-        const gymsData = await gymsRes.json()
 
         setStats(statsData.stats)
         setUsers(usersData.users || [])
-        const adminGyms = (gymsData.gyms || []) as GymItem[]
-        setGyms(adminGyms)
-        setSelectedGymSlug(meData.user?.gymSlug || "")
+        setGymSlug(meData.user?.gymSlug || "")
+        setGymName(meData.user?.gymName || "")
       } finally {
         setLoading(false)
       }
@@ -46,6 +50,13 @@ export function AdminDashboard() {
 
     fetchDashboardAdmin()
   }, [])
+
+  useEffect(() => {
+    if (profileRequest > lastProfileRequestRef.current) {
+      lastProfileRequestRef.current = profileRequest
+      setView("profile")
+    }
+  }, [profileRequest])
 
   const refreshAdminData = async () => {
     const [statsRes, usersRes] = await Promise.all([
@@ -67,13 +78,11 @@ export function AdminDashboard() {
   }
 
   if (view === "metrics") {
-    const currentGym = gyms.find((gym) => gym.slug === selectedGymSlug)
-
     return (
       <AdminMetricsSection
         stats={stats}
-        gymSlug={selectedGymSlug}
-        gymName={currentGym?.name}
+        gymSlug={gymSlug}
+        gymName={gymName}
         onBack={() => setView("home")}
       />
     )
@@ -92,11 +101,30 @@ export function AdminDashboard() {
   if (view === "inventory") {
     return (
       <AdminInventorySection
-        gyms={gyms}
-        selectedGymSlug={selectedGymSlug}
-        onGymChange={setSelectedGymSlug}
+        gymSlug={gymSlug}
+        gymName={gymName}
         onBack={() => setView("home")}
       />
+    )
+  }
+
+  if (view === "profile") {
+    return (
+      <div className="w-full space-y-6 xl:px-2 2xl:px-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Mi Perfil</h2>
+            <p className="mt-1 text-muted-foreground">
+              Actualiza tu información personal y la identidad del gimnasio
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => setView("home")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver al Dashboard
+          </Button>
+        </div>
+        <AdminProfile gymSlug={gymSlug} />
+      </div>
     )
   }
 

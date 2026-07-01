@@ -1,13 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { MoreHorizontal, Shield, Dumbbell, Crown } from "lucide-react"
-import type { UserRole } from "@/lib/auth"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import type { UserRole } from "@/lib/auth"
+import { Crown, Dumbbell, MoreHorizontal, Shield } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface UsersTableProps {
   users: Array<{ id: string; name: string; email: string; role: UserRole; avatar?: string; trainerId?: string; isActive?: boolean; gymSlug?: string | null }>
@@ -91,6 +91,7 @@ export function UsersTable({ users, onRefresh }: UsersTableProps) {
             <TableHead>Rol</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Estado</TableHead>
+            <TableHead>Entrenador asignado</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
@@ -125,38 +126,40 @@ export function UsersTable({ users, onRefresh }: UsersTableProps) {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{user.email}</TableCell>
                 <TableCell>
-                  <div className="space-y-2">
-                    <Badge variant="outline" className={user.isActive === false ? "bg-muted text-muted-foreground" : "bg-primary/5 text-primary border-primary/20"}>
-                      {user.isActive === false ? "Inactivo" : "Activo"}
-                    </Badge>
-                    {user.role === 'client' && (
-                      <div className="space-y-1">
-                        <Select
-                          value={selectedTrainerByUser[user.id] ?? user.trainerId ?? "unassigned"}
-                          onValueChange={(value) => setSelectedTrainerByUser((current) => ({ ...current, [user.id]: value }))}
-                        >
-                          <SelectTrigger className="h-8 w-[220px]">
-                            <SelectValue placeholder="Asignar entrenador" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unassigned">Sin entrenador</SelectItem>
-                            {trainers.map((trainer) => (
-                              <SelectItem key={trainer.id} value={trainer.id}>
-                                {trainer.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="text-xs text-muted-foreground">
-                          {assignedTrainer ? `Actual: ${assignedTrainer.name}` : "Sin entrenador asignado"}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <Badge variant="outline" className={user.isActive === false ? "bg-muted text-muted-foreground" : "bg-primary/5 text-primary border-primary/20"}>
+                    {user.isActive === false ? "Inactivo" : "Activo"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {user.role === "client" ? (
+                    <div className="space-y-2">
+                      <Select
+                        value={selectedTrainerByUser[user.id] ?? user.trainerId ?? "unassigned"}
+                        onValueChange={(value) =>
+                          setSelectedTrainerByUser((current) => ({ ...current, [user.id]: value }))
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-[220px]">
+                          <SelectValue placeholder="Asignar entrenador" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Sin entrenador</SelectItem>
+                          {trainers.map((trainer) => (
+                            <SelectItem key={trainer.id} value={trainer.id}>
+                              {trainer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {assignedTrainer ? `Actual: ${assignedTrainer.name}` : "Sin entrenador asignado"}
+                      </p>
+                    </div>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                        {user.role === 'client' && (
+                    {user.role === 'client' && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -175,7 +178,6 @@ export function UsersTable({ users, onRefresh }: UsersTableProps) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleUpdateUser(user.id, { role: 'superadmin', trainerId: null })}>Cambiar a superadmin</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleUpdateUser(user.id, { role: 'admin', trainerId: null })}>Cambiar a administrador</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleUpdateUser(user.id, { role: 'trainer' })}>Cambiar a entrenador</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleUpdateUser(user.id, { role: 'client' })}>Cambiar a cliente</DropdownMenuItem>

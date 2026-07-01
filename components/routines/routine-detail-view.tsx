@@ -2,8 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, CheckCircle2, Clock, TrendingUp } from "lucide-react"
-import { useMemo, useState } from "react"
+import { ArrowLeft, Clock, TrendingUp } from "lucide-react"
 import { ExerciseCard } from "./exercise-card"
 
 type RoutineProgressEntry = {
@@ -57,48 +56,6 @@ const difficultyLabels = {
 }
 
 export function RoutineDetailView({ routine, workoutDate, onBack }: RoutineDetailViewProps) {
-  const progressDate = workoutDate || new Date().toISOString().slice(0, 10)
-
-  const initialCompleted = useMemo(() => {
-    const map: Record<string, boolean> = {}
-    for (const entry of routine.routineProgress || []) {
-      const entryDate = entry.dateKey || entry.completedAt?.slice(0, 10)
-      if (entryDate !== progressDate) continue
-      map[`${entry.exerciseId}-${entry.setNumber}`] = true
-    }
-    return map
-  }, [routine.routineProgress, progressDate])
-
-  const [localCompleted, setLocalCompleted] = useState<Record<string, boolean>>({})
-
-  const completed = useMemo(
-    () => ({ ...initialCompleted, ...localCompleted }),
-    [initialCompleted, localCompleted],
-  )
-
-  const markSetCompleted = async (exerciseId: string, setNumber: number) => {
-    if (!routine.assignmentId) return
-
-    const key = `${exerciseId}-${setNumber}`
-    if (completed[key]) return
-
-    const response = await fetch(`/api/assignments/${routine.assignmentId}/progress`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        routineId: routine.id,
-        exerciseId,
-        setNumber,
-        date: progressDate,
-      }),
-    })
-
-    if (response.ok) {
-      setLocalCompleted((current) => ({ ...current, [key]: true }))
-    }
-  }
-
   return (
     <div className="space-y-6">
       <Button variant="ghost" onClick={onBack} className="gap-2">
@@ -157,29 +114,6 @@ export function RoutineDetailView({ routine, workoutDate, onBack }: RoutineDetai
                 }}
                 index={index}
               />
-              <div className="rounded-lg border p-4 space-y-2">
-                <p className="text-sm font-medium">Series</p>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from({ length: exercise.sets }).map((_, i) => {
-                    const setNumber = i + 1
-                    const key = `${exercise.exercise._id}-${setNumber}`
-                    const isDone = completed[key]
-                    return (
-                      <Button
-                        key={key}
-                        type="button"
-                        size="sm"
-                        variant={isDone ? "default" : "outline"}
-                        onClick={() => markSetCompleted(exercise.exercise._id, setNumber)}
-                        disabled={isDone || !routine.assignmentId}
-                      >
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Serie {setNumber}
-                      </Button>
-                    )
-                  })}
-                </div>
-              </div>
             </div>
           ))}
         </div>

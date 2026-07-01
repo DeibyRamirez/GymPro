@@ -1,16 +1,15 @@
 "use client"
 
+import { StatsCard } from "@/components/admin/stats-card"
+import { DashboardNavAction } from "@/components/dashboard/dashboard-nav-action"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { DashboardNavAction } from "@/components/dashboard/dashboard-nav-action"
-import { StatsCard } from "@/components/admin/stats-card"
 import {
   ChartNoAxesCombined,
   Dumbbell,
   LayoutDashboard,
-  ShieldCheck,
   ShoppingBag,
-  Users,
+  Users
 } from "lucide-react"
 
 type DashboardStats = {
@@ -70,13 +69,13 @@ export function AdminHomeSection({ stats, onNavigate }: AdminHomeSectionProps) {
               icon={Users}
               trend={{ value: 15, isPositive: true }}
             />
-            <StatsCard
+            {/* <StatsCard
               title="Seguridad"
               value={"OK" as never}
               description="Acceso controlado"
               icon={ShieldCheck}
               trend={{ value: 100, isPositive: true }}
-            />
+            /> */}
           </div>
 
           <Separator className="opacity-50" />
@@ -92,7 +91,7 @@ export function AdminHomeSection({ stats, onNavigate }: AdminHomeSectionProps) {
               />
               <DashboardNavAction
                 icon={ChartNoAxesCombined}
-                label="Métricas"
+                label="Bitacora"
                 onClick={() => onNavigate("metrics")}
                 accent="bg-amber-500/15 text-amber-600"
               />

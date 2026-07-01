@@ -4,7 +4,7 @@ import type React from "react"
 
 import { ForgotPasswordSentStep, ForgotPasswordStep } from "@/components/auth/forgot-password-steps"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -17,6 +17,7 @@ interface LoginFormProps {
   onSwitchToRegister?: () => void
   redirectTo?: string
   gymSlug?: string
+  embedded?: boolean
 }
 
 type AuthStep = "login" | "forgot" | "forgot-sent"
@@ -27,7 +28,7 @@ function hasCustomLogo(logo?: string | null) {
   return Boolean(logo && logo !== PLACEHOLDER_LOGO)
 }
 
-export function LoginForm({ onLogin, onSwitchToRegister, redirectTo = '/app', gymSlug }: LoginFormProps) {
+export function LoginForm({ onLogin, onSwitchToRegister, redirectTo = '/app', gymSlug, embedded = false }: LoginFormProps) {
   const [step, setStep] = useState<AuthStep>("login")
   const [forgotEmail, setForgotEmail] = useState("")
   const [email, setEmail] = useState("")
@@ -131,107 +132,125 @@ export function LoginForm({ onLogin, onSwitchToRegister, redirectTo = '/app', gy
     setError("")
   }
 
-  return (
-    <div className="max-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border bg-primary/10">
-            {hasCustomLogo(displayLogo) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={displayLogo!}
-                alt={displayName}
-                className="h-full w-full object-cover"
+  const brandingHeader = (
+    <>
+      <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border bg-primary/10 shadow-sm sm:h-16 sm:w-16">
+        {hasCustomLogo(displayLogo) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={displayLogo!}
+            alt={displayName}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <Dumbbell className="h-7 w-7 text-primary sm:h-8 sm:w-8" />
+        )}
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">
+          {step === "login" ? displayName : "Recuperación"}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          {step === "login"
+            ? gymSlug
+              ? `Acceso al portal de ${displayName}`
+              : "Acceso al SaaS de gestión de gimnasios"
+            : "Recupera tu contraseña sin intervención del administrador"}
+        </p>
+      </div>
+    </>
+  )
+
+  const formFields = (
+    <>
+      {step === "login" && (
+        <>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo electrónico</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-11"
               />
-            ) : (
-              <Dumbbell className="h-8 w-8 text-primary" />
-            )}
-          </div>
-          <div>
-            <CardTitle className="text-3xl font-bold text-balance">
-              {step === "login" ? displayName : "Recuperación"}
-            </CardTitle>
-            <CardDescription className="text-base mt-2">
-              {step === "login"
-                ? gymSlug
-                  ? `Acceso al portal de ${displayName}`
-                  : "Acceso al SaaS de gestión de gimnasios"
-                : "Recupera tu contraseña sin intervención del administrador"}
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {step === "login" && (
-            <>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Correo electrónico</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="tu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="password">Contraseña</Label>
-                    <button
-                      type="button"
-                      onClick={() => setStep("forgot")}
-                      className="text-xs font-medium text-primary hover:underline"
-                    >
-                      ¿Olvidaste tu contraseña?
-                    </button>
-                  </div>
-                  <PasswordInput
-                    id="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                  {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
-                </Button>
-              </form>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="password">Contraseña</Label>
+                <button
+                  type="button"
+                  onClick={() => setStep("forgot")}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+              <PasswordInput
+                id="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+            </Button>
+          </form>
 
-              {onSwitchToRegister && (
-                <div className="mt-6 text-center text-sm">
-                  <p className="text-muted-foreground">
-                    ¿No tienes una cuenta?{" "}
-                    <button
-                      type="button"
-                      onClick={onSwitchToRegister}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      Regístrate
-                    </button>
-                  </p>
-                </div>
-              )}
-            </>
+          {onSwitchToRegister && (
+            <div className="mt-6 text-center text-sm">
+              <p className="text-muted-foreground">
+                ¿No tienes una cuenta?{" "}
+                <button
+                  type="button"
+                  onClick={onSwitchToRegister}
+                  className="font-medium text-primary hover:underline"
+                >
+                  Regístrate
+                </button>
+              </p>
+            </div>
           )}
+        </>
+      )}
 
-          {step === "forgot" && (
-            <ForgotPasswordStep
-              gymSlug={gymSlug}
-              onBack={resetToLogin}
-              onSent={(sentEmail) => {
-                setForgotEmail(sentEmail)
-                setStep("forgot-sent")
-              }}
-            />
-          )}
+      {step === "forgot" && (
+        <ForgotPasswordStep
+          gymSlug={gymSlug}
+          onBack={resetToLogin}
+          onSent={(sentEmail) => {
+            setForgotEmail(sentEmail)
+            setStep("forgot-sent")
+          }}
+        />
+      )}
 
-          {step === "forgot-sent" && (
-            <ForgotPasswordSentStep email={forgotEmail} onBack={resetToLogin} />
-          )}
-        </CardContent>
+      {step === "forgot-sent" && (
+        <ForgotPasswordSentStep email={forgotEmail} onBack={resetToLogin} />
+      )}
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="w-full">
+        <div className="space-y-4 pb-6 text-center">{brandingHeader}</div>
+        {formFields}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-4 text-center">{brandingHeader}</CardHeader>
+        <CardContent>{formFields}</CardContent>
       </Card>
     </div>
   )
