@@ -26,11 +26,11 @@ export function countUnreadMessages(threads: MessageThreadLike[], userId: string
   }, 0)
 }
 
-export function markThreadEntriesRead(
-  entries: MessageEntryLike[],
+export function markThreadEntriesRead<T extends MessageEntryLike>(
+  entries: T[],
   userId: string,
   readAt: Date = new Date(),
-): MessageEntryLike[] {
+): T[] {
   const userKey = String(userId)
 
   return entries.map((entry) =>

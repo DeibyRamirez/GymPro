@@ -41,10 +41,10 @@ export async function POST(req: NextRequest) {
       if (!threadHasUnreadForUser(thread, user._id.toString())) continue
 
       thread.content = markThreadEntriesRead(
-        (thread.content || []) as Array<Record<string, unknown>>,
+        thread.content || [],
         user._id.toString(),
         readAt,
-      ) as typeof thread.content;
+      );
       thread.readAt = readAt;
       await thread.save();
       markedCount += 1;
